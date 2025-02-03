@@ -1,0 +1,640 @@
+
+	processor 6502
+        include "vcs.h"
+        include "macro.h"
+        include "xmacro.h"
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Variables segment
+
+        seg.u Variables
+	org $80
+
+Temp		byte
+EnableMissiles  byte
+ScanlineCounter	byte
+tmpPF0		byte
+tmpPF1		byte
+tmpPF2		byte
+
+; Scores 
+Score0		byte
+Score1		byte
+
+; Sprite Positions 
+YPos0		byte
+YPos1		byte
+XPos0		byte	
+XPos1		byte
+YP0		byte
+YP1		byte
+ColP0   	byte
+ColP1		byte
+
+; Missile Positions
+MissileY0	byte
+MissileY1	byte
+MissileX0	byte
+MissileX1	byte
+MissileHeight0  byte
+MissileVel0	byte
+MissileVel1	byte
+
+; Sprite Pointers
+
+ColourPtr0	word
+ColourPtr1	word
+SpritePtr0	word
+SpritePtr1	word
+
+
+; Playfield Pointer
+
+PFPtr		word
+
+; Joystick Button 
+Pressed 	byte
+
+; Score Font Buffer 2x5 array
+FontBuf 	ds 10
+
+
+; Constants 
+SpriteHeight 	equ 16
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Code segment
+
+	seg Code
+        org $f000
+
+Start
+	CLEAN_START
+        		
+        ; Setting Player Sprite Pointers 
+        
+        lda #<Frame0
+        sta SpritePtr0
+        lda #>Frame0
+        sta SpritePtr0+1
+        
+        lda #<ColourFrame0
+        sta ColourPtr0
+        lda #>ColourFrame0
+        sta ColourPtr0+1
+        
+        lda #<Frame0
+        sta SpritePtr1
+        lda #>Frame0
+        sta SpritePtr1+1
+        
+        lda #<ColourFrame0
+        sta ColourPtr1
+        lda #>ColourFrame0
+        sta ColourPtr1+1
+        
+        ; Intitial Scores
+        lda #0
+        sta Score0
+        sta Score1
+        sta MissileHeight0
+        
+        ; Initial Player and missile Y Positions
+        lda #254
+        sta YPos0
+        sta MissileY0
+        sta YPos1
+        sta MissileY1
+        
+        lda #0
+        sta MissileVel0
+        sta MissileVel1
+        
+        ; Initial Plaayer and missile X positions
+       	lda #40
+        sta XPos0
+        sta MissileX0
+        lda #112
+        sta XPos1
+        sta MissileX1
+        lda #1
+        sta VDELP0	; Set delay for displaying P0 until GRP1 is set
+         
+        ; Set temporary counter and set horizontal position
+        lda YPos0
+        sta YP0
+        lda YPos1
+        sta YP1
+        
+        lda XPos0
+        ldx #0
+        jsr SetHorizPos
+        
+        lda XPos1
+        ldx #1
+        jsr SetHorizPos
+        
+        ldx #1
+        sta WSYNC
+        sta HMOVE
+
+NextFrame
+        lsr SWCHB	; test Game Reset switch
+        bcc Start	; reset?
+        
+
+        
+; 1 + 3 lines of VSYNC
+	VERTICAL_SYNC
+        
+; 37 lines of underscan
+	TIMER_SETUP 37 
+        
+        ; Setup background colour and scoremode ready for scoreboard
+        lda #$00
+        sta COLUBK
+        lda #5
+        sta CTRLPF	; Symmetry
+        
+       	; Setup the scores ready for display  
+        lda Score0
+        ldx #0
+        jsr GetBCDBitmap
+        lda Score1
+        ldx #5
+        jsr GetBCDBitmap
+        
+        ; Set temporary counter to position of players
+        lda YPos0
+        sta YP0
+        lda YPos1
+        sta YP1
+        
+        ; Set the horizontal position of players
+        lda XPos0
+        ldx #0
+        jsr SetHorizPos
+        
+        lda XPos1
+        ldx #1
+        jsr SetHorizPos
+        
+        ; Offset the missile0 to the center of sprite0
+        lda XPos0
+        clc
+        adc #4
+        sta MissileX0
+        ldx #2
+        jsr SetHorizPos
+        
+        ; Offset the missile1 to the center of sprite1
+        
+        lda XPos1
+        adc #4
+        sta MissileX1
+        ldx #3
+        jsr SetHorizPos
+        
+        
+        ; Move the missile upwards constantly by one scanline every frame until the given Y position of the missile
+        ; Reset the missile to the player's position if it reaches the maximum height
+        lda MissileY0
+        sec
+        sbc MissileVel0 ; decrease y position of missile by 2 per frame
+        sbc MissileVel0
+        cmp #170        ; Maximum height of the missile
+        bcs .NoReset  
+        ldy Pressed
+        cpy #0
+        bne .NoMoveY
+        ; Reset the missile to the player with a velocity of 0
+        lda #0
+        sta MissileVel0 ; 0
+
+        lda YPos0
+.NoReset
+        sta MissileY0  
+.NoMoveY
+        sta WSYNC
+        sta HMOVE ; Apply horizontal offset 
+       
+        TIMER_WAIT
+; 192 lines of frame
+        
+	
+        TIMER_SETUP 192 
+        jsr DrawScoreboard
+        
+        ; Set Background to blue
+        lda #$aa
+        sta COLUBK
+        
+        lda #89
+        sta ScanlineCounter
+KernelLoop
+	jsr DrawSprites
+        dec ScanlineCounter
+        bne KernelLoop
+        
+        TIMER_WAIT
+
+; 29 lines of overscan
+	TIMER_SETUP 29
+       
+       	
+       
+        ; Max Player position = 175
+        ; Minimum Player Position = 254
+        ; YPos0 - MissileY0 = MissileHeight0
+        ; 200 - 175 = 25
+        ; 
+        
+        lda YPos0
+        sec
+        sbc MissileY0
+        sta MissileHeight0
+        
+        
+        
+        jsr JoystickButton
+        jsr FireButton
+        jsr MoveJoystick
+        jsr MoveJoystick1
+        
+        TIMER_WAIT
+; total = 262 lines, go to next frame
+        jmp NextFrame
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Subroutines
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+; Scoreboard Subroutines
+
+DrawScoreboard subroutine
+	; Put playfield into score mode
+        
+        lda #%00010010
+        sta CTRLPF
+        lda #$48
+        sta COLUP0 ; left colour
+        lda #$a8
+        sta COLUP1 ; right colour
+        ; Draw digits
+        ldy #0
+ScanLoop1a
+        sta WSYNC ; 76
+        tya
+        lsr	   ; Divide Y by two for double-height lines 	
+        tax	   ; A -> X
+        lda FontBuf+0,x
+        sta PF1		; set left score bitmap	
+        SLEEP 28
+        lda FontBuf+5,x
+        sta PF1		; set right score bitmap
+        iny
+        cpy #10
+        bcc ScanLoop1a
+        
+        ; Clear playfield
+        lda #0
+        sta WSYNC
+        sta PF1
+        ; Turn playfield reflection off (and turn score mode off)
+        lda #%00010100
+        sta CTRLPF
+        rts
+
+        
+; GetBCDBitmap
+; Fetches the bitmap data for two digits of a
+; BCD-encoded number, storing it in addresses
+; FontBuf+x to FontBuf+4+x
+GetBCDBitmap subroutine 
+	; Fetch the bytes for the 1st digit
+        pha		; save original BCD number
+        and #$0F	; mask out the least significant number
+        sta Temp
+        asl 
+        asl
+        adc Temp 	; multiply by 5
+        tay		; A -> Y
+        lda #5
+        sta Temp	; count down from 5
+.loop1
+	lda DigitsBitmap,y
+        and #$0F	; mask out left most digit
+        sta FontBuf,x 
+        iny
+        inx
+        dec Temp
+        bne .loop1
+        
+        ; Second Digit 
+        
+	pla 		; restore original BCD number
+        lsr
+        lsr
+        lsr
+        lsr		;shift right by 4
+        sta Temp
+        asl 
+        asl
+        adc Temp	; multiply by 5
+        tay 		; A -> Y
+        dex
+        dex
+        dex
+        dex
+        dex
+        lda #5
+        sta Temp 	; count down from 5
+.loop2
+	lda DigitsBitmap,y
+        and #$F0	; make out rightmost digit
+        ora FontBuf,x	; combine left and right digts
+        sta FontBuf,x	; store combined digits
+        iny
+        inx
+        dec Temp
+        bne .loop2
+        rts
+        
+; Draw Missiles
+        
+; Drawing Sprites
+
+
+; This has to take a maximum of 152 machine cycles
+
+DrawSprites subroutine
+      	; Fetch Sprite 0 values 
+        lda #SpriteHeight	; Height in 2xlines
+        sec			; Set carry bit
+        isb YP0			; Inc YP0, then SBC YP0 ; SpriteHeight-(YPO+1) at each scanline
+        			; MissileHeight-(YP0+1)
+        bcs .DoDraw0		; Inside bounds sprite bounds?
+        lda #0			; If no, load the padding offset
+.DoDraw0
+	tay 			; A -> Y
+        lda (ColourPtr0),y	; Colour for both lines
+        sta ColP0		; A -> ColP0
+        lda (SpritePtr0),y	; Bitmap for first line
+        sta GRP0		; A -> [GRP0] (delayed due to VDELP0)
+        
+        lda MissileHeight0
+        sbc YP0
+        lda #2
+        bcs .EnableMissile0
+        lda #0
+.EnableMissile0
+        sta EnableMissiles
+	
+        ; Fetch sprite 1 values 
+ 
+ 	lda #SpriteHeight	; Height in 2xlines
+        sec			; set carry bit
+        isb YP1			; INC YP1, then SBC YP1
+        bcs .DoDraw1		; inside bounds?
+        lda #0			; If no, load the padding offset
+.DoDraw1
+	tay
+        lda (ColourPtr1),y
+        tax
+        lda (SpritePtr1),y
+        tay
+        
+        ; WSYNC and store sprite values
+        lda ColP0
+        
+        
+        sta WSYNC
+        ; HBLANK
+        sty GRP1	; GRP0 also updated due to VDELP0
+        ; Store the player colours
+        stx COLUP1
+        sta COLUP0
+        lda EnableMissiles
+        sta ENAM0
+        asl
+        sta ENAM1
+        nop ; exactly 22 machine cycles
+              
+        rts
+
+        
+        
+; Movement Subroutines 
+
+; Read joystick movement and apply to object 0
+MoveJoystick
+; Move vertically
+
+; (up and down are actually reversed since ypos starts at bottom)
+;	ldx YPos0
+;	lda #%00100000	;Up?
+;	bit SWCHA
+;	bne SkipMoveUp
+;        cpx #254
+;        bcc SkipMoveUp
+;        dex
+;SkipMoveUp
+;	lda #%00010000	;Down?
+;	bit SWCHA 
+;	bne SkipMoveDown
+;        cpx #254
+;        bcs SkipMoveDown
+;        inx
+;SkipMoveDown
+;	stx YPos0
+
+; Move horizontally
+        ldx XPos0
+	lda #%01000000	;Left?
+	bit SWCHA
+	bne SkipMoveLeft
+        cpx #1
+        bcc SkipMoveLeft
+        dex
+SkipMoveLeft
+	lda #%10000000	;Right?
+	bit SWCHA 
+	bne SkipMoveRight
+        cpx #153
+        bcs SkipMoveRight
+        inx
+SkipMoveRight
+	stx XPos0
+	rts
+        
+MoveJoystick1
+; Move vertically
+; (up and down are actually reversed since ypos starts at bottom)
+
+;       	ldx YPos1
+;	lda #$02	;Up?
+;	bit SWCHA
+;	bne SkipMoveUp1
+;        cpx #175
+;        bcc SkipMoveUp1
+;        dex
+;SkipMoveUp1
+;	lda #$01	;Down?
+;	bit SWCHA 
+;	bne SkipMoveDown1
+;       cpx #254
+;        bcs SkipMoveDown1
+;        inx
+;SkipMoveDown1
+;	stx YPos1
+
+
+; Move horizontally
+        ldx XPos1
+	lda #$04	;Left?
+	bit SWCHA
+	bne SkipMoveLeft1
+        cpx #1
+        bcc SkipMoveLeft1
+        dex
+SkipMoveLeft1
+	lda #$08	;Right?
+	bit SWCHA 
+	bne SkipMoveRight1
+        cpx #153
+        bcs SkipMoveRight1
+        inx
+SkipMoveRight1
+	stx XPos1
+                
+	rts
+
+
+; The X register contains the index of the desired object:
+;  X=0: player 0
+;  X=1: player 1
+;  X=2: missile 0
+;  X=3: missile 1
+;  X=4: ball
+
+SetHorizPos
+	sta WSYNC	; start a new line
+        bit 0		; waste 3 cycles
+	sec		; set carry flag
+DivideLoop
+	sbc #15		; subtract 15
+	bcs DivideLoop	; branch until negative
+	eor #7		; calculate fine offset
+	asl
+	asl
+	asl
+	asl
+	sta RESP0,x	; fix coarse position
+	sta HMP0,x	; set fine offset
+	rts		; return to caller
+
+
+JoystickButton subroutine
+        bit INPT4
+        bmi .SetNotPressed ; if the button is not pressed, set the pressed flag to 0
+       	lda Pressed	   ; Otherwise, if it is already pressed, do not do anything 
+        bne .skip           
+        inc Pressed        ; Otherwise, set the flag nad add one to the score 
+        
+        ; Add one to the score
+        clc
+        sed
+        lda Score0
+        adc #1	
+        sta Score0
+        cld
+        ; end add one to score
+        
+        jmp .skip
+.SetNotPressed
+	lda #0
+        sta Pressed
+.skip	
+	rts
+        
+FireButton subroutine 
+	bit INPT4	  ; read button
+        bmi .NoFireButton ; bit 7 set?
+        lda MissileVel0   ; Check if missile is already fired. 
+        ror
+        bcs .NoFireButton
+        inc MissileVel0
+.NoFireButton
+	rts
+
+	org $FF00
+
+; Credit to 8BitWorkshop
+; Bitmap pattern for digits
+DigitsBitmap ;;{w:8,h:5,count:10,brev:1};;
+        .byte $EE,$AA,$AA,$AA,$EE
+        .byte $22,$22,$22,$22,$22
+        .byte $EE,$22,$EE,$88,$EE
+        .byte $EE,$22,$66,$22,$EE
+        .byte $AA,$AA,$EE,$22,$22
+        .byte $EE,$88,$EE,$22,$EE
+        .byte $EE,$88,$EE,$AA,$EE
+        .byte $EE,$22,$22,$22,$22
+        .byte $EE,$AA,$EE,$AA,$EE
+        .byte $EE,$AA,$EE,$22,$EE
+;;end
+
+
+;---Graphics Data from PlayerPal 2600---
+
+Frame0
+	.byte #0
+        .byte #%01111110;$00
+        .byte #%00111100;$00
+        .byte #%00111100;$94
+        .byte #%00111100;$94
+        .byte #%00111100;$94
+        .byte #%00111100;$94
+        .byte #%00111100;$00
+        .byte #%01111110;$94
+        .byte #%01111110;$94
+        .byte #%01111110;$94
+        .byte #%01111110;$94
+        .byte #%01111110;$94
+        .byte #%00111100;$0E
+        .byte #%00100100;$94
+        .byte #%00100100;$94
+        .byte #%00111100;$94
+;---End Graphics Data---
+
+
+;---Color Data from PlayerPal 2600---
+
+ColourFrame0
+        .byte #$0F; ; Colour of the missile
+        .byte #$94;
+        .byte #$94;
+        .byte #$94;
+        .byte #$94;
+        .byte #$00;
+        .byte #$94;
+        .byte #$94;
+        .byte #$94;
+        .byte #$94;
+        .byte #$94;
+        .byte #$0E;
+        .byte #$94;
+        .byte #$94;
+        .byte #$94;
+        .byte #$94;
+        .byte #$94;
+        
+;---End Color Data---
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Epilogue
+
+	org $fffc
+        .word Start	; reset vector
+        .word Start	; BRK vector
