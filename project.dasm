@@ -246,15 +246,45 @@ NextFrame
         
         ; DRAW PLAYER LOOP
         ; ----------------
-        lda #17
-        sta ScanlineCounter
+        
+        lda SpriteHeight
+        sta Temp
 DrawSpriteLoop
-	jsr DrawSprites
-        dec ScanlineCounter
+	ldy Temp
+        
+        lda (ColourPtr0),y	; Colour for both lines
+        sta ColP0		; A -> ColP0
+        lda (SpritePtr0),y	; Bitmap for first line
+        sta GRP0		; A -> [GRP0] (delayed due to VDELP0)
+        
+        lda (ColourPtr1),y
+        tax
+        lda (SpritePtr1),y
+        tay
+        
+        lda ColP0 
+        sta WSYNC
+        ; HBLANK
+        sty GRP1	;GRP0 also updated due to VDELP0
+        ; Store the player colours
+        stx COLUP1
+        sta COLUP0
+        
+        dec Temp
+        
+        lda Temp 
+        sta WSYNC
+        
         bne DrawSpriteLoop
+        
+        lda #0
+        sta GRP0
+        sta GRP1
         
         ; DRAW MISSILES LOOP (and later playfield graphics)
         ; ------------------
+        
+  
         
         ; TODO
          
@@ -268,8 +298,6 @@ DrawSpriteLoop
 
 	TIMER_SETUP 29
        
-       	
-       
         ; Max Player position = 175
         ; Minimum Player Position = 254
         ; YPos0 - MissileY0 = MissileHeight0
@@ -280,9 +308,8 @@ DrawSpriteLoop
         sec
         sbc MissileY0
         sta MissileHeight0
-        
-        
-        
+       
+       
         jsr JoystickButton
         jsr FireButton0
         jsr FireButton1
@@ -400,9 +427,9 @@ GetBCDBitmap subroutine
 
 DrawSprites subroutine
       	; Fetch Sprite 0 values 
-        lda #SpriteHeight	; Height in 2xlines
-        sec			; Set carry bit
-        isb YP0			; Inc YP0, then SBC YP0 ; SpriteHeight-(YPO+1) at each scanline
+         lda #SpriteHeight	; Height in 2xlines
+         sec			; Set carry bit
+         isb YP0			; Inc YP0, then SBC YP0 ; SpriteHeight-(YPO+1) at each scanline
         			; MissileHeight-(YP0+1)
         bcs .DoDraw0		; Inside bounds sprite bounds?
         lda #0			; If no, load the padding offset
@@ -413,15 +440,6 @@ DrawSprites subroutine
         lda (SpritePtr0),y	; Bitmap for first line
         sta GRP0		; A -> [GRP0] (delayed due to VDELP0)
         
-        lda MissileHeight0	; 0
-        sec			; Set carry
-        sbc YP0			; 0 - (-1)
-        lda #2
-        bcs .EnableMissile0
-        lda #0
-.EnableMissile0
-        sta EnableMissiles
-	
         ; Fetch sprite 1 values 
  
  	lda #SpriteHeight	; Height in 2xlines
@@ -437,23 +455,33 @@ DrawSprites subroutine
         tay
         
         ; WSYNC and store sprite values
-        lda ColP0
-        
-        
+        lda ColP0 
         sta WSYNC
         ; HBLANK
         sty GRP1	; GRP0 also updated due to VDELP0
         ; Store the player colours
         stx COLUP1
         sta COLUP0
+              
+        rts
+
+DrawMissiles
+	lda MissileHeight0	; 0
+        sec			; Set carry
+        sbc YP0			; 0 - (-1)
+        lda #2
+        bcs .EnableMissile0
+        lda #0
+.EnableMissile0
+        sta EnableMissiles
+        
+        ; TO GO IN HBLANK
         lda EnableMissiles
         sta ENAM0
         asl
         sta ENAM1
-        nop ; exactly 22 machine cycles
-              
+        
         rts
-
         
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;        
 ; 		Joystick Input Subroutines 
@@ -621,7 +649,7 @@ DigitsBitmap ;;{w:8,h:5,count:10,brev:1};;
 ;---Graphics Data from PlayerPal 2600---
 
 Frame0
-	.byte #0
+        .byte #0
         .byte #%01111110;$00
         .byte #%00111100;$00
         .byte #%00111100;$94
