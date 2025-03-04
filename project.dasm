@@ -214,7 +214,7 @@ NextFrame
         sec
         sbc MissileVel0 ; decrease y position of missile by 2 per frame
         sbc MissileVel0
-        cmp #170        ; Maximum height of the missile
+        cmp #115       ; Maximum height of the missile
         bcs .NoReset  
         ldy Pressed
         cpy #0
@@ -284,9 +284,36 @@ DrawSpriteLoop
         ; DRAW MISSILES LOOP (and later playfield graphics)
         ; ------------------
         
-  
+        ldy #0
+DrawMissileLoop
+	sty Temp
+        lda MissileHeight0
+        sec			; Set carry
+        sbc Temp	        ; 0 - (-1)
+        lda #2
+        bcs .EnableMissile0
+        lda #0
+.EnableMissile0
+        sta EnableMissiles
         
-        ; TODO
+        lda MissileHeight0	; TODO Replace with 1
+        sec			; Set carry
+        sbc Temp	        ; 0 - (-1)
+        bcc .EnableMissile1
+        inc EnableMissiles
+.EnableMissile1
+        sta WSYNC
+
+	; HBLANK
+	lda EnableMissiles
+        sta ENAM0
+        asl
+        sta ENAM1
+
+	iny
+        cpy #145
+        bne DrawMissileLoop
+  
          
         TIMER_WAIT
 
@@ -304,7 +331,7 @@ DrawSpriteLoop
         ; 200 - 175 = 25
         ; 
         
-        lda YPos0
+        lda #0
         sec
         sbc MissileY0
         sta MissileHeight0
