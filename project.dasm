@@ -46,8 +46,7 @@ MissileVel1	byte
 
 ColourPtr0	word
 ColourPtr1	word
-SpritePtr0	word
-SpritePtr1	word
+SpritePtr	word
 
 
 ; Playfield Pointer
@@ -63,6 +62,8 @@ FontBuf 	ds 10
 
 ; Constants 
 SpriteHeight 	equ 16
+Player0Colour   equ #$94
+Player1Colour   equ #$42
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Code segment
@@ -79,24 +80,19 @@ Start
         		
         ; Setting Player Sprite Pointers 
         
-        lda #<Frame0
-        sta SpritePtr0
-        lda #>Frame0
-        sta SpritePtr0+1
+        lda #<PlayerSprite
+        sta SpritePtr
+        lda #>PlayerSprite
+        sta SpritePtr+1
         
         lda #<ColourFrame0
         sta ColourPtr0
         lda #>ColourFrame0
         sta ColourPtr0+1
-        
-        lda #<Frame0
-        sta SpritePtr1
-        lda #>Frame0
-        sta SpritePtr1+1
-        
-        lda #<ColourFrame0
+          
+        lda #<ColourFrame1
         sta ColourPtr1
-        lda #>ColourFrame0
+        lda #>ColourFrame1
         sta ColourPtr1+1
         
         ; Intitial Scores
@@ -162,13 +158,7 @@ NextFrame
         
 ; 37 lines of underscan
 	TIMER_SETUP 37 
-        
-        ; Setup background colour and scoremode ready for scoreboard
-        lda #$00
-        sta COLUBK
-        lda #5
-        sta CTRLPF	; Symmetry
-        
+      
        	; Setup the scores ready for display  
         lda Score0
         ldx #0
@@ -176,13 +166,7 @@ NextFrame
         lda Score1
         ldx #5
         jsr GetBCDBitmap
-        
-        ; Set temporary counter to position of players
-        lda YPos0
-        sta YP0
-        lda YPos1
-        sta YP1
-        
+          
         ; Set the horizontal position of players
         lda XPos0
         ldx #0
@@ -196,15 +180,12 @@ NextFrame
         lda XPos0
         clc
         adc #4
-        sta MissileX0
         ldx #2
         jsr SetHorizPos
         
         ; Offset the missile1 to the center of sprite1
-        
         lda XPos1
         adc #4
-        sta MissileX1
         ldx #3
         jsr SetHorizPos
         
@@ -256,7 +237,11 @@ NextFrame
         sta MissileY1  
 .NoMoveY1
 
-
+	; Setup background colour and scoremode ready for scoreboard
+        lda #$00
+        sta COLUBK
+        lda #5
+        sta CTRLPF	; Symmetry
 
         sta WSYNC
         sta HMOVE ; Apply horizontal offset 
@@ -285,12 +270,12 @@ DrawSpriteLoop
         
         lda (ColourPtr0),y	; Colour for both lines
         sta ColP0		; A -> ColP0
-        lda (SpritePtr0),y	; Bitmap for first line
+        lda (SpritePtr),y	; Bitmap for first line
         sta GRP0		; A -> [GRP0] (delayed due to VDELP0)
         
         lda (ColourPtr1),y
         tax
-        lda (SpritePtr1),y
+        lda (SpritePtr),y
         tay
         
         lda ColP0 
@@ -387,15 +372,17 @@ DrawMissileLoop
 
 ; Scoreboard Subroutines
 ; ----------------------
+; Credit to 8Bitworkshop (Steven Hugg)
+
 DrawScoreboard subroutine
 	; Put playfield into score mode
         
         lda #%00010010
         sta CTRLPF
-        lda #$48
+        lda #$98   ; Slightly lighter colour than player0 sprite
         sta COLUP0 ; left colour
-        lda #$a8
-        sta COLUP1 ; right colour
+        lda #$46   ; Slightly lighter colour than player1 sprite		
+        sta COLUP1 ; right colour	
         ; Draw digits
         ldy #0
 ScanLoop1a
@@ -477,7 +464,7 @@ GetBCDBitmap subroutine
         rts
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;		   Drawing Subroutines
+;		   Drawing Subroutines (NOT USED)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ; Draw Missiles
@@ -498,7 +485,7 @@ DrawSprites subroutine
 	tay 			; A -> Y
         lda (ColourPtr0),y	; Colour for both lines
         sta ColP0		; A -> ColP0
-        lda (SpritePtr0),y	; Bitmap for first line
+        lda (SpritePtr),y	; Bitmap for first line
         sta GRP0		; A -> [GRP0] (delayed due to VDELP0)
         
         ; Fetch sprite 1 values 
@@ -512,7 +499,7 @@ DrawSprites subroutine
 	tay
         lda (ColourPtr1),y
         tax
-        lda (SpritePtr1),y
+        lda (SpritePtr),y
         tay
         
         ; WSYNC and store sprite values
@@ -738,7 +725,7 @@ DigitsBitmap ;;{w:8,h:5,count:10,brev:1};;
 
 ;---Graphics Data from PlayerPal 2600---
 
-Frame0
+PlayerSprite
         .byte #0
         .byte #%01111110;$00
         .byte #%00111100;$00
@@ -763,22 +750,41 @@ Frame0
 
 ColourFrame0
         .byte #$0F; ; Colour of the missile
-        .byte #$94;
-        .byte #$94;
-        .byte #$94;
-        .byte #$94;
+        .byte Player0Colour;
+        .byte Player0Colour;
+        .byte Player0Colour;
+        .byte Player0Colour;
         .byte #$00;
-        .byte #$94;
-        .byte #$94;
-        .byte #$94;
-        .byte #$94;
-        .byte #$94;
+        .byte Player0Colour;
+        .byte Player0Colour;
+        .byte Player0Colour;
+        .byte Player0Colour;
+        .byte Player0Colour;
         .byte #$0E;
-        .byte #$94;
-        .byte #$94;
-        .byte #$94;
-        .byte #$94;
-        .byte #$94;
+        .byte Player0Colour;
+        .byte Player0Colour;
+        .byte Player0Colour;
+        .byte Player0Colour;
+        .byte Player0Colour;
+        
+ColourFrame1
+        .byte #$0F; ; Colour of the missile
+        .byte Player1Colour;
+        .byte Player1Colour;
+        .byte Player1Colour;
+        .byte Player1Colour;
+        .byte #$00;
+        .byte Player1Colour;
+        .byte Player1Colour;
+        .byte Player1Colour;
+        .byte Player1Colour;
+        .byte Player1Colour;
+        .byte #$0E;
+        .byte Player1Colour;
+        .byte Player1Colour;
+        .byte Player1Colour;
+        .byte Player1Colour;
+        .byte Player1Colour;
         
 ;---End Color Data---
 
