@@ -38,6 +38,7 @@ MissileY1	byte
 MissileX0	byte
 MissileX1	byte
 MissileHeight0  byte
+MissileHeight1  byte
 MissileVel0	byte
 MissileVel1	byte
 
@@ -212,13 +213,16 @@ NextFrame
         ; Reset the missile to the player's position if it reaches the maximum height
         lda MissileY0
         sec
-        sbc MissileVel0 ; decrease y position of missile by 2 per frame
+        sbc MissileVel0 ; decrease y position of missile by 4 per frame
         sbc MissileVel0
+        sbc MissileVel0
+        sbc MissileVel0
+        
         cmp #115       ; Maximum height of the missile
         bcs .NoReset  
-        ldy Pressed
-        cpy #0
-        bne .NoMoveY
+        lda Pressed
+        lsr
+        bcs .NoMoveY
         ; Reset the missile to the player with a velocity of 0
         lda #0
         sta MissileVel0 ; 0
@@ -227,6 +231,33 @@ NextFrame
 .NoReset
         sta MissileY0  
 .NoMoveY
+
+; Move the missile upwards constantly by one scanline every frame until the given Y position of the missile
+        ; Reset the missile to the player's position if it reaches the maximum height
+        lda MissileY1
+        sec
+        sbc MissileVel1 ; decrease y position of missile by 4 per frame
+        sbc MissileVel1
+        sbc MissileVel1
+        sbc MissileVel1
+        
+        cmp #115       ; Maximum height of the missile
+        bcs .NoReset1 
+        lda Pressed
+        lsr
+        lsr
+        bcs .NoMoveY1
+        ; Reset the missile to the player with a velocity of 0
+        lda #0
+        sta MissileVel1 ; 0
+
+        lda YPos1
+.NoReset1
+        sta MissileY1  
+.NoMoveY1
+
+
+
         sta WSYNC
         sta HMOVE ; Apply horizontal offset 
        
@@ -280,6 +311,9 @@ DrawSpriteLoop
         lda #0
         sta GRP0
         sta GRP1
+        lda #$0F
+        sta COLUP0
+        sta COLUP1
         
         ; DRAW MISSILES LOOP (and later playfield graphics)
         ; ------------------
@@ -296,7 +330,7 @@ DrawMissileLoop
 .EnableMissile0
         sta EnableMissiles
         
-        lda MissileHeight0	; TODO Replace with 1
+        lda MissileHeight1	; TODO Replace with 1
         sec			; Set carry
         sbc Temp	        ; 0 - (-1)
         bcc .EnableMissile1
@@ -325,18 +359,18 @@ DrawMissileLoop
 
 	TIMER_SETUP 29
        
-        ; Max Player position = 175
-        ; Minimum Player Position = 254
-        ; YPos0 - MissileY0 = MissileHeight0
-        ; 200 - 175 = 25
-        ; 
-        
         lda #0
         sec
         sbc MissileY0
         sta MissileHeight0
+        
+        lda #0
+        sec
+        sbc MissileY1
+        sta MissileHeight1
+        
        
-       
+        jsr JoystickButton1
         jsr JoystickButton
         jsr FireButton0
         jsr FireButton1
@@ -625,7 +659,8 @@ JoystickButton subroutine
         bit INPT4
         bmi .SetNotPressed ; if the button is not pressed, set the pressed flag to 0
        	lda Pressed	   ; Otherwise, if it is already pressed, do not do anything 
-        bne .skip           
+        lsr
+        bcs .skip           
         inc Pressed        ; Otherwise, set the flag nad add one to the score 
         
         ; Add one to the score
@@ -639,7 +674,35 @@ JoystickButton subroutine
         
         jmp .skip
 .SetNotPressed
-	lda #0
+	lda Pressed
+        eor %00000001
+        sta Pressed
+.skip	
+	rts
+        
+JoystickButton1 subroutine
+        bit INPT5
+        bmi .SetNotPressed ; if the button is not pressed, set the pressed flag to 0
+       	lda Pressed	   ; Otherwise, if it is already pressed, do not do anything
+        lsr
+        lsr
+        bcs .skip           
+        lda #2        ; Otherwise, set the flag nad add one to the score 
+        sta Pressed
+        
+        ; Add one to the score
+        clc
+        sed
+        lda Score1
+        adc #1	
+        sta Score1
+        cld
+        ; end add one to score
+        
+        jmp .skip
+.SetNotPressed
+	lda Pressed
+        eor %00000010
         sta Pressed
 .skip	
 	rts
