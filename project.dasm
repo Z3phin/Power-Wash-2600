@@ -23,12 +23,8 @@ Score0		byte	; Player 0 score
 Score1		byte    ; Player 1 score
 
 ; Sprite Positions 
-YPos0		byte	; TODO remove (old player 0 Y coordinate, now on constant Y)
-YPos1		byte	; TODO remove (old player 0 Y coordinate, now on constant Y)
 XPos0		byte	
 XPos1		byte
-YP0		byte    ; IDK, something to do with displaying players
-YP1		byte    ; IDK, something to do with displaying player
 ColP0   	byte	; Player0 colour on given scanline
 ColP1		byte	; Player1 colour on given scanline
 
@@ -48,7 +44,6 @@ ColourPtr0	word
 ColourPtr1	word
 SpritePtr	word
 
-
 ; Playfield Pointer
 
 PFPtr		word
@@ -61,7 +56,8 @@ FontBuf 	ds 10
 
 
 ; Constants 
-SpriteHeight 	equ 16
+SpriteHeight 	equ #16
+DefaultYPos	equ #0
 Player0Colour   equ #$94
 Player1Colour   equ #$42
 
@@ -103,9 +99,7 @@ Start
         
         ; Initial Player and missile Y Positions
         lda #255	; at position 0 and then adding more the player sprites move upwards
-        sta YPos0
         sta MissileY0
-        sta YPos1
         sta MissileY1
         
         lda #0
@@ -122,12 +116,6 @@ Start
         lda #1
         sta VDELP0	; Set delay for displaying P0 until GRP1 is set
          
-        ; Set temporary counter and set horizontal position
-        lda YPos0
-        sta YP0
-        lda YPos1
-        sta YP1
-        
         lda XPos0
         ldx #0
         jsr SetHorizPos
@@ -208,7 +196,7 @@ NextFrame
         lda #0
         sta MissileVel0 ; 0
 
-        lda YPos0
+        lda DefaultYPos
 .NoReset
         sta MissileY0  
 .NoMoveY
@@ -232,7 +220,7 @@ NextFrame
         lda #0
         sta MissileVel1 ; 0
 
-        lda YPos1
+        lda DefaultYPos
 .NoReset1
         sta MissileY1  
 .NoMoveY1
@@ -462,74 +450,6 @@ GetBCDBitmap subroutine
         dec Temp
         bne .loop2
         rts
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;		   Drawing Subroutines (NOT USED)
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-; Draw Missiles
-        
-; Drawing Sprites
-
-; This has to take a maximum of 152 machine cycles
-
-DrawSprites subroutine
-      	; Fetch Sprite 0 values 
-         lda #SpriteHeight	; Height in 2xlines
-         sec			; Set carry bit
-         isb YP0			; Inc YP0, then SBC YP0 ; SpriteHeight-(YPO+1) at each scanline
-        			; MissileHeight-(YP0+1)
-        bcs .DoDraw0		; Inside bounds sprite bounds?
-        lda #0			; If no, load the padding offset
-.DoDraw0
-	tay 			; A -> Y
-        lda (ColourPtr0),y	; Colour for both lines
-        sta ColP0		; A -> ColP0
-        lda (SpritePtr),y	; Bitmap for first line
-        sta GRP0		; A -> [GRP0] (delayed due to VDELP0)
-        
-        ; Fetch sprite 1 values 
- 
- 	lda #SpriteHeight	; Height in 2xlines
-        sec			; set carry bit
-        isb YP1			; INC YP1, then SBC YP1
-        bcs .DoDraw1		; inside bounds?
-        lda #0			; If no, load the padding offset
-.DoDraw1
-	tay
-        lda (ColourPtr1),y
-        tax
-        lda (SpritePtr),y
-        tay
-        
-        ; WSYNC and store sprite values
-        lda ColP0 
-        sta WSYNC
-        ; HBLANK
-        sty GRP1	; GRP0 also updated due to VDELP0
-        ; Store the player colours
-        stx COLUP1
-        sta COLUP0
-              
-        rts
-
-DrawMissiles
-	lda MissileHeight0	; 0
-        sec			; Set carry
-        sbc YP0			; 0 - (-1)
-        lda #2
-        bcs .EnableMissile0
-        lda #0
-.EnableMissile0
-        sta EnableMissiles
-        
-        ; TO GO IN HBLANK
-        lda EnableMissiles
-        sta ENAM0
-        asl
-        sta ENAM1
-        
-        rts
         
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;        
 ; 		Joystick Input Subroutines 
@@ -590,7 +510,7 @@ FireButton0 subroutine
 	bit INPT4	  ; read Joystick 1 button
         bmi .NoFireButton ; bit 7 set?
         lda MissileVel0   ; Check if missile is already fired. 
-        ror ; Move value into carry to be checked easily
+        ror 		  ; Move value into carry to be checked easily
         bcs .NoFireButton ; Skip firing the missile (do not add on nto velocity)
         inc MissileVel0
 .NoFireButton
@@ -669,8 +589,8 @@ JoystickButton subroutine
         
 JoystickButton1 subroutine
         bit INPT5
-        bmi .SetNotPressed ; if the button is not pressed, set the pressed flag to 0
-       	lda Pressed	   ; Otherwise, if it is already pressed, do not do anything
+        bmi .SetNotPressed ; if the button is not pressed, set the pressed flag to 0 
+	lda Pressed	   ; Otherwise, if it is already pressed, do not do anything
         lsr
         lsr
         bcs .skip           
@@ -749,7 +669,7 @@ PlayerSprite
 ;---Color Data from PlayerPal 2600---
 
 ColourFrame0
-        .byte #$0F; ; Colour of the missile
+        .byte #$0; ; Colour of the missile
         .byte Player0Colour;
         .byte Player0Colour;
         .byte Player0Colour;
