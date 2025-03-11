@@ -245,7 +245,7 @@ NextFrame
         jsr DrawScoreboard
         
         ; Set Background to blue
-        lda #$aa
+        lda #$ba
         sta COLUBK
         
         ; DRAW PLAYER LOOP
@@ -284,7 +284,7 @@ DrawSpriteLoop
         lda #0
         sta GRP0
         sta GRP1
-        lda #$0F
+        lda #$aF
         sta COLUP0
         sta COLUP1
         
@@ -688,7 +688,7 @@ ColourFrame0
         .byte Player0Colour;
         
 ColourFrame1
-        .byte #$0F; ; Colour of the missile
+        .byte #00 ; Colour of the missile
         .byte Player1Colour;
         .byte Player1Colour;
         .byte Player1Colour;
