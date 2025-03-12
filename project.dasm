@@ -39,8 +39,7 @@ MissileVel0	byte
 MissileVel1	byte
 
 ; Dirt 
-Dirt		ds 36 	; 6x6 bytes (Dirt map)	 
-
+Dirt		ds 36 	; 6x6 bytes (Dirt map)
 ; Sprite Pointers
 
 ColourPtr0	word
@@ -64,6 +63,11 @@ DefaultYPos	equ #0
 Player0Colour   equ #$94
 Player1Colour   equ #$42
 
+DirtHeight	equ 16	; Height of each dirt spot in pixels
+NumDirtRows	equ 6	; Number of dirt rows 
+BytesPerRow 	equ 6 	; Number of bytes (8 x 6 = 42 bits)
+DirtPerRow 	equ 40 	; Number of Dirt spots per row 
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Code segment
 
@@ -76,6 +80,17 @@ Player1Colour   equ #$42
 
 Start
 	CLEAN_START
+        
+        
+        ; Temporary setup of dirt
+        ldx #0
+        lda #$ff
+SetupDirt
+        sta Dirt,x
+        txa
+        inx
+        cpx #BytesPerRow*NumDirtRows
+        bne SetupDirt
         		
         ; Setting Player Sprite Pointers 
         
@@ -291,12 +306,12 @@ DrawSpriteLoop
         sta COLUP0
         sta COLUP1
         
-        ; DRAW MISSILES LOOP (and later playfield graphics)
+        ; DRAW MISSILES LOOP (to be combined with playfield graphics loop)
         ; ------------------
         
         ldy #0
 DrawMissileLoop
-	sty Temp
+        sty Temp
         lda MissileHeight0
         sec			; Set carry
         sbc Temp	        ; 0 - (-1)
@@ -313,17 +328,63 @@ DrawMissileLoop
         inc EnableMissiles
 .EnableMissile1
         sta WSYNC
-
-	; HBLANK
+        ;HBLANK
 	lda EnableMissiles
         sta ENAM0
         asl
         sta ENAM1
-
-	iny
-        cpy #145
+        
+        iny
+        cpy #40
         bne DrawMissileLoop
-  
+        
+        
+        
+        ; PLAYFIELD GRAPHICS LOOP
+        ; ------------------
+        
+        lda #$54
+        sta COLUPF
+        
+        ; Y contains the dirt row we are on. 
+        
+        ldy #$ff ; Start at -1 
+        ldx #$ff
+ScanLoopA
+	iny ; Go to next brick row 
+        lda #DirtHeight
+        sta Temp
+        cpy #NumDirtRows
+        bcs DoneDirtDraw
+ScanLoopB
+        sta WSYNC
+        lda Dirt+NumDirtRows*0,y
+        sta PF0
+        lda Dirt+NumDirtRows*1,y
+        sta PF1
+        lda Dirt+NumDirtRows*2,y
+        sta PF2
+      
+        inx
+        nop
+       
+        lda Dirt+NumDirtRows*3,y
+        sta PF0
+        lda Dirt+NumDirtRows*4,y
+        sta PF1
+        lda Dirt+NumDirtRows*5,y
+        sta PF2
+               
+        dec Temp
+        bne ScanLoopB	; All dirt spots done on current line? 
+        beq ScanLoopA	; Branch always taken
+        
+DoneDirtDraw
+	sta WSYNC
+  	lda #0
+        sta PF0
+        sta PF1
+        sta PF2
          
         TIMER_WAIT
 
