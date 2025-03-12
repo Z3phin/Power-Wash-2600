@@ -38,6 +38,9 @@ MissileHeight1  byte
 MissileVel0	byte
 MissileVel1	byte
 
+; Dirt 
+Dirt		ds 36 	; 6x6 bytes (Dirt map)	 
+
 ; Sprite Pointers
 
 ColourPtr0	word
