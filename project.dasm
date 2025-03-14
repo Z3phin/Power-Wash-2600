@@ -59,7 +59,7 @@ DefaultYPos	equ #0
 Player0Colour   equ #$94
 Player1Colour   equ #$42
 
-DirtHeight	equ 8	; Height of each dirt spot in pixels
+DirtHeight	equ 8	; Height of each dirt spot in 2xScanlines
 NumDirtRows	equ 6	; Number of dirt rows 
 
 ; TODO use
@@ -371,9 +371,9 @@ DrawLoop
       	
         inx			 ; Increment scanline counter	
         
-        nop			 ; timing
-        nop
-        nop
+        nop			 ; timing - not counted towards total machine cycle use
+        nop			 ; timing	
+        nop			 ; timing	
         
         ; We have 8 machine cycles between these two (6 wasted machine cycles)
        
@@ -410,10 +410,17 @@ DoneDirtDraw
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 	TIMER_SETUP 29
+ 
+ 	ldx #0
+ 	jsr MissileCollision
+        ldx #1
+        jsr MissileCollision
+               
+        sta CXCLR
        
         lda #0
         sec
-        sbc MissileY0
+        sbc MissileY0 
         sta MissileHeight0
         
         lda #0
@@ -436,6 +443,27 @@ DoneDirtDraw
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; 					Subroutines
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+; x - contains the player missile and player score to add to
+MissileCollision subroutine
+	lda CXM0FB,x
+        sta Temp
+	lda #%11000000
+        bit Temp
+        bne .collision
+        beq .nocollision
+.collision
+	clc
+        sed
+        lda Score0,x
+        adc #1	
+        sta Score0,x
+        cld
+.nocollision
+	rts
+        ; end add one to score
+        
 
 ; Scoreboard Subroutines
 ; ----------------------
@@ -648,16 +676,7 @@ JoystickButton subroutine
         lsr
         bcs .skip           
         inc Pressed        ; Otherwise, set the flag nad add one to the score 
-        
-        ; Add one to the score
-        clc
-        sed
-        lda Score0
-        adc #1	
-        sta Score0
-        cld
-        ; end add one to score
-        
+              
         jmp .skip
 .SetNotPressed
 	lda Pressed
