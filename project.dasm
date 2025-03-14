@@ -62,7 +62,7 @@ Player1Colour   equ #$42
 DirtHeight	equ 8	; Height of each dirt spot in 2xScanlines
 NumDirtRows	equ 6	; Number of dirt rows 
 NDR		equ NumDirtRows
-DirtYStart	equ 0 
+DirtYStart	equ 32 
 
 ; TODO use
 BytesPerRow 	equ 6 	; Number of bytes (8 x 6 = 42 bits)
@@ -357,6 +357,10 @@ DrawLoop
 .EnableMissile1 	
 	sta ENAM1		; Takes 14-16 machine cycles   
         			; At MAX this is 32 machine cycles
+                                
+        cpx #DirtYStart
+        bmi .innerLoop
+                           
         
         ; Next Scanline - draw playfield data
         ; -----------------------------------
@@ -456,6 +460,19 @@ MissileCollision subroutine
         bne .collision
         beq .nocollision
 .collision
+
+	txa
+        tay
+        pha
+        
+        lda MissileY0,y
+        ldx MissileX0,y
+        
+        jsr CleanDirt ; NOT WORKING
+        
+        pla
+	tax
+
 	clc
         sed
         lda Score0,x
