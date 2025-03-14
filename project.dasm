@@ -61,6 +61,8 @@ Player1Colour   equ #$42
 
 DirtHeight	equ 8	; Height of each dirt spot in 2xScanlines
 NumDirtRows	equ 6	; Number of dirt rows 
+NDR		equ NumDirtRows
+DirtYStart	equ 0 
 
 ; TODO use
 BytesPerRow 	equ 6 	; Number of bytes (8 x 6 = 42 bits)
@@ -559,8 +561,58 @@ GetBCDBitmap subroutine
         rts
         
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;        
+; 			Clean Dirt
+;	     Originally created by Steven Hugg
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;        
+
+
+; Subroutine to try to clear a bit of dirt at a given X-Y coordinate.
+; X contains the X coordinate.
+; A contains the Y coordinate.
+; On return, A = -1 if no dirt was present,
+; otherwise A = Y offset (0-brickheight-1) of dirt hit.
+CleanDirt
+        ldy #$ff
+        sec
+        sbc #DirtYStart	; subtract top Y of dirt field
+; Divide by dirrt height
+DivideRowLoop
+	iny
+        sbc #DirtHeight
+	bcs DivideRowLoop	; loop until < 0
+        cpy #NumDirtRows
+        bcs NoBrickFound
+; Now that we have the line, get byte and bit offset for brick
+	clc
+        adc #DirtHeight
+	pha	; save the remainder to return as result
+	txa
+        clc
+        adc #3	; adjust because SetHorizPos is off by a few pixels
+        lsr
+        lsr	; divide X coordinate by 4
+        tax	; transfer brick column to X
+        tya	; load brick row # in A
+        clc
+        adc PFOfsTable,x	; add offset
+        tay
+        lda PFMaskTable,x
+        eor #$ff
+        and Dirt,y
+        cmp Dirt,y		; was there a change?
+        beq NoBrickFound2	; no, so return -1 as result
+        sta Dirt,y
+        pla		; return remainder as result
+        rts
+NoBrickFound2
+	pla		; pull the remainder, but ignore it
+NoBrickFound
+	lda #$FF	; return -1 as result
+        rts
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;        
 ; 		Joystick Input Subroutines 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ; Player 0 Movement
 ; ----------------
@@ -803,7 +855,25 @@ ColourFrame1
         .byte Player1Colour;
         .byte Player1Colour;
         .byte Player1Colour;
-        
+
+
+; Playfield bitmasks for all 40 dirt columns
+PFMaskTable
+	REPEAT 2
+	.byte #$10,#$20,#$40,#$80
+	.byte #$80,#$40,#$20,#$10,#$08,#$04,#$02,#$01
+	.byte #$01,#$02,#$04,#$08,#$10,#$20,#$40,#$80
+        REPEND
+
+; Dirt array byte offsets for all 40 dirt columns
+PFOfsTable
+	.byte NDR*0,NDR*0,NDR*0,NDR*0
+	.byte NDR*1,NDR*1,NDR*1,NDR*1, NDR*1,NDR*1,NDR*1,NDR*1
+	.byte NDR*2,NDR*2,NDR*2,NDR*2, NDR*2,NDR*2,NDR*2,NDR*2
+	.byte NDR*3,NDR*3,NDR*3,NDR*3
+	.byte NDR*4,NDR*4,NDR*4,NDR*4, NDR*4,NDR*4,NDR*4,NDR*4
+	.byte NDR*5,NDR*5,NDR*5,NDR*5, NDR*5,NDR*5,NDR*5,NDR*5
+
 ;---End Color Data---
 
 
