@@ -12,12 +12,6 @@
 
 Temp		byte	; Temp variable, used for variety of purposees
 DirtHeightCounter byte
-EnableMissiles  byte	; Used to store whether each missile is enabled on a scanline
-			; ------XX, where bit 2 is player 1, bit 1 is player 0
-ScanlineCounter	byte	; Counts which scanline we are on
-tmpPF0		byte	; Temporary variable for holding playfield (PF0 register) data
-tmpPF1		byte    ; Temporary variable for holding playfield (PF1 register) data
-tmpPF2		byte    ; Temporary variable for holding playfield (PF2 register) data
 
 ; Scores 
 Score0		byte	; Player 0 score
@@ -57,6 +51,7 @@ Pressed 	byte
 ; Score Font Buffer 2x5 array
 FontBuf 	ds 10
 
+; NUMBER OF BYTES OF RAM USED = 71
 
 ; Constants 
 SpriteHeight 	equ #16
@@ -336,6 +331,11 @@ DrawLoop
 	inx			; increment scanline counter
         sta WSYNC
         
+        lda #0			; Remove what was left in the Playfield registers
+        sta PF0
+        sta PF1
+        sta PF2
+        
         stx Temp
         lda MissileHeight0
         sec			; Set carry
@@ -369,10 +369,13 @@ DrawLoop
         sta PF2			 ; 21 machine cycles - 1 off HBLANK
       	; END HBLANK
       	
-        inx			 ; Increment scanline counter		
-        nop			 ; timing
+        inx			 ; Increment scanline counter	
         
-        ; How long do I have here? 
+        nop			 ; timing
+        nop
+        nop
+        
+        ; We have 8 machine cycles between these two (6 wasted machine cycles)
        
         lda Dirt+NumDirtRows*3,y
         sta PF0
@@ -385,7 +388,7 @@ DrawLoop
         dec DirtHeightCounter	
         
         bne .innerLoop
-        beq DrawLoop
+        beq DrawLoop		; Total 55 machine cycles used here, 21 machine cycles free 
 
 DoneDirtDraw
 	sta WSYNC
