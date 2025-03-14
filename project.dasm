@@ -11,6 +11,7 @@
 	org $80
 
 Temp		byte	; Temp variable, used for variety of purposees
+DirtHeightCounter byte
 EnableMissiles  byte	; Used to store whether each missile is enabled on a scanline
 			; ------XX, where bit 2 is player 1, bit 1 is player 0
 ScanlineCounter	byte	; Counts which scanline we are on
@@ -63,8 +64,10 @@ DefaultYPos	equ #0
 Player0Colour   equ #$94
 Player1Colour   equ #$42
 
-DirtHeight	equ 16	; Height of each dirt spot in pixels
+DirtHeight	equ 8	; Height of each dirt spot in pixels
 NumDirtRows	equ 6	; Number of dirt rows 
+
+; TODO use
 BytesPerRow 	equ 6 	; Number of bytes (8 x 6 = 42 bits)
 DirtPerRow 	equ 40 	; Number of Dirt spots per row 
 
@@ -87,7 +90,7 @@ Start
         lda #$ff
 SetupDirt
         sta Dirt,x
-        txa
+        txa ; (un)comment for a 'random' looking pattern
         inx
         cpx #BytesPerRow*NumDirtRows
         bne SetupDirt
@@ -109,22 +112,19 @@ SetupDirt
         lda #>ColourFrame1
         sta ColourPtr1+1
         
-        ; Intitial Scores
+        ; Intitial Scores and missile positions
         lda #0
         sta Score0
         sta Score1
-        sta MissileHeight0
         
-        ; Initial Player and missile Y Positions
-        lda #255	; at position 0 and then adding more the player sprites move upwards
+        sta MissileHeight0
+        sta MissileHeight1
         sta MissileY0
         sta MissileY1
-        
-        lda #0
         sta MissileVel0
         sta MissileVel1
         
-        ; Initial Plaayer and missile X positions
+        ; Initial Player and missile X positions
        	lda #40
         sta XPos0
         sta MissileX0
@@ -308,84 +308,96 @@ DrawSpriteLoop
         
         ; DRAW MISSILES LOOP (to be combined with playfield graphics loop)
         ; ------------------
-        
-        ldy #0
-DrawMissileLoop
-        sty Temp
-        lda MissileHeight0
-        sec			; Set carry
-        sbc Temp	        ; 0 - (-1)
-        lda #2
-        bcs .EnableMissile0
-        lda #0
-.EnableMissile0
-        sta EnableMissiles
-        
-        lda MissileHeight1	; TODO Replace with 1
-        sec			; Set carry
-        sbc Temp	        ; 0 - (-1)
-        bcc .EnableMissile1
-        inc EnableMissiles
-.EnableMissile1
-        sta WSYNC
-        ;HBLANK
-	lda EnableMissiles
-        sta ENAM0
-        asl
-        sta ENAM1
-        
-        iny
-        cpy #40
-        bne DrawMissileLoop
-        
-        
-        
+                
         ; PLAYFIELD GRAPHICS LOOP
         ; ------------------
         
         lda #$54
         sta COLUPF
         
-        ; Y contains the dirt row we are on. 
+        ; Y contains the dirt row we are on.
+        ; X contains the scanline we are on.
         
-        ldy #$ff ; Start at -1 
+        ldy #$ff ; Start at -1 ; 
         ldx #$ff
-ScanLoopA
-	iny ; Go to next brick row 
+DrawLoop
+	iny 			; Go to next brick row
+        
         lda #DirtHeight
-        sta Temp
+        sta DirtHeightCounter
         cpy #NumDirtRows
         bcs DoneDirtDraw
-ScanLoopB
+
+.innerLoop
+	
+        ; Enable missiles
+        ; -------------------
+	
+	inx			; increment scanline counter
         sta WSYNC
+        
+        stx Temp
+        lda MissileHeight0
+        sec			; Set carry
+        sbc Temp	        
+        lda #2
+        bcs .EnableMissile0
+        lda #0
+.EnableMissile0
+        sta ENAM0		; Takes 14-16 machine cycles
+        
+        lda MissileHeight1	
+        sec			; Set carry
+        sbc Temp				
+        lda #2		
+        bcs .EnableMissile1
+        lda #0			
+.EnableMissile1 	
+	sta ENAM1		; Takes 14-16 machine cycles   
+        			; At MAX this is 32 machine cycles
+        
+        ; Next Scanline - draw playfield data
+        ; -----------------------------------
+        sta WSYNC
+        
+        ; HBLANK
         lda Dirt+NumDirtRows*0,y
         sta PF0
         lda Dirt+NumDirtRows*1,y
         sta PF1
         lda Dirt+NumDirtRows*2,y
-        sta PF2
-      
-        inx
-        nop
+        sta PF2			 ; 21 machine cycles - 1 off HBLANK
+      	; END HBLANK
+      	
+        inx			 ; Increment scanline counter		
+        nop			 ; timing
+        
+        ; How long do I have here? 
        
         lda Dirt+NumDirtRows*3,y
         sta PF0
         lda Dirt+NumDirtRows*4,y
         sta PF1
         lda Dirt+NumDirtRows*5,y
-        sta PF2
-               
-        dec Temp
-        bne ScanLoopB	; All dirt spots done on current line? 
-        beq ScanLoopA	; Branch always taken
+        sta PF2			 ; 21 machine cycles 
+        			 ; TOTAL for PFx is 42 machine cycles. 76 - 42 machine cycles = 34	 
         
+        dec DirtHeightCounter	
+        
+        bne .innerLoop
+        beq DrawLoop
+
 DoneDirtDraw
 	sta WSYNC
+        
+        ; Turn off missiles and playfield data
   	lda #0
         sta PF0
         sta PF1
         sta PF2
-         
+        sta ENAM0
+        sta ENAM1
+               
         TIMER_WAIT
 
 ; 29 lines of overscan
