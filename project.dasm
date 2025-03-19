@@ -192,54 +192,6 @@ NextFrame
         ldx #3
         jsr SetHorizPos
         
-        
-        ; Move the missile upwards constantly by one scanline every frame until the given Y position of the missile
-        ; Reset the missile to the player's position if it reaches the maximum height
-        lda MissileY0
-        sec
-        sbc MissileVel0 ; decrease y position of missile by 4 per frame
-        sbc MissileVel0
-        sbc MissileVel0
-        sbc MissileVel0
-        
-        cmp #115       ; Maximum height of the missile
-        bcs .NoReset  
-        lda Pressed
-        lsr
-        bcs .NoMoveY
-        ; Reset the missile to the player with a velocity of 0
-        lda #0
-        sta MissileVel0 ; 0
-
-        lda DefaultYPos
-.NoReset
-        sta MissileY0  
-.NoMoveY
-
-; Move the missile upwards constantly by one scanline every frame until the given Y position of the missile
-        ; Reset the missile to the player's position if it reaches the maximum height
-        lda MissileY1
-        sec
-        sbc MissileVel1 ; decrease y position of missile by 4 per frame
-        sbc MissileVel1
-        sbc MissileVel1
-        sbc MissileVel1
-        
-        cmp #115       ; Maximum height of the missile
-        bcs .NoReset1 
-        lda Pressed
-        lsr
-        lsr
-        bcs .NoMoveY1
-        ; Reset the missile to the player with a velocity of 0
-        lda #0
-        sta MissileVel1 ; 0
-
-        lda DefaultYPos
-.NoReset1
-        sta MissileY1  
-.NoMoveY1
-
 	; Setup background colour and scoremode ready for scoreboard
         lda #$00
         sta COLUBK
@@ -335,20 +287,19 @@ DrawLoop
         
         lda #0			; Remove what was left in the Playfield registers
         sta PF0
-        sta PF1
-        sta PF2
+        sta PF1                        
+        sta PF2                  
         
         stx Temp
-        lda MissileHeight0
-        sec			; Set carry
-        sbc Temp	        
+        lda MissileY0
+        cmp Temp		; If the scanline is more than the Missile Y, disable the missile
         lda #2
         bcs .EnableMissile0
         lda #0
 .EnableMissile0
         sta ENAM0		; Takes 14-16 machine cycles
         
-        lda MissileHeight1	
+        lda MissileY1	
         sec			; Set carry
         sbc Temp				
         lda #2		
@@ -423,22 +374,12 @@ DoneDirtDraw
         jsr MissileCollision
                
         sta CXCLR
-       
-        lda #0
-        sec
-        sbc MissileY0 
-        sta MissileHeight0	; DO I NEED THIS ? IS this causing a bug? 
         
-        lda #0
-        sec
-        sbc MissileY1
-        sta MissileHeight1
-        
-       
-        jsr JoystickButton1
-        jsr JoystickButton
-        jsr FireButton0
-        jsr FireButton1
+       	lda #0
+        ;jsr JoystickButton1
+        ;jsr JoystickButton
+        ;jsr FireButton0
+        ;jsr FireButton1
         jsr MoveJoystick0
         jsr MoveJoystick1
         
@@ -643,48 +584,85 @@ NoBrickFound
 ; ----------------
 
 ; Read joystick movement and apply to object 0
-MoveJoystick0
+MoveJoystick0 subroutine
 ; Move horizontally
         ldx XPos0
 	lda #%01000000	;Left?
 	bit SWCHA
-	bne SkipMoveLeft
+	bne .SkipMoveLeft
         cpx #1
-        bcc SkipMoveLeft
+        bcc .SkipMoveLeft
         dex
-SkipMoveLeft
+.SkipMoveLeft
 	lda #%10000000	;Right?
 	bit SWCHA 
-	bne SkipMoveRight
+	bne .SkipMoveRight
         cpx #153
-        bcs SkipMoveRight
+        bcs .SkipMoveRight
         inx
-SkipMoveRight
+.SkipMoveRight
 	stx XPos0
-	rts
+
+	ldy MissileY0
+        lda #%00100000	;Up?
+        bit SWCHA
+        bne .SkipMoveUp
+        cpy #1
+        bcc .SkipMoveUp
+        dey
+.SkipMoveUp
+        lda #%00010000	;down?
+        bit SWCHA
+        bne .SkipMoveDown
+        cpy #DirtYStart+(DirtHeight*2*NumDirtRows)
+        bcs .SkipMoveDown
+        iny
+.SkipMoveDown
+        sty MissileY0  
+        
+	rts    
+    
         
 ; Player 1 Movement
 ; ----------------
         
-MoveJoystick1
+MoveJoystick1 subroutine 
 ; Move horizontally
         ldx XPos1
 	lda #$04	;Left?
 	bit SWCHA
-	bne SkipMoveLeft1
-        cpx #1
-        bcc SkipMoveLeft1
+	bne .SkipMoveLeft
+        cpx #1		; Max Left
+        bcc .SkipMoveLeft
         dex
-SkipMoveLeft1
+.SkipMoveLeft
 	lda #$08	;Right?
 	bit SWCHA 
-	bne SkipMoveRight1
-        cpx #153
-        bcs SkipMoveRight1
+	bne .SkipMoveRight
+        cpx #153	; Max Right
+        bcs .SkipMoveRight
         inx
-SkipMoveRight1
+.SkipMoveRight
 	stx XPos1
-                
+        
+; Move Vertically
+	ldy MissileY1
+        lda #$02	;Up?
+        bit SWCHA
+        bne .SkipMoveUp
+        cpy #1
+        bcc .SkipMoveUp
+        dey
+.SkipMoveUp
+        lda #$01	;down?
+        bit SWCHA
+        bne .SkipMoveDown
+        cpy #DirtYStart+DirtHeight*2*NumDirtRows
+        bcs .SkipMoveDown
+        iny
+.SkipMoveDown
+        sty MissileY1   
+        
 	rts
 
 ; Player 0 Button
@@ -695,7 +673,7 @@ FireButton0 subroutine
         bmi .NoFireButton ; bit 7 set?
         lda MissileVel0   ; Check if missile is already fired. 
         ror 		  ; Move value into carry to be checked easily
-        bcs .NoFireButton ; Skip firing the missile (do not add on nto velocity)
+        bcs .NoFireButton ; Skip firing the missile (do not add on to velocity)
         inc MissileVel0
 .NoFireButton
 	rts
