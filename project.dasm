@@ -427,7 +427,7 @@ DoneDirtDraw
         lda #0
         sec
         sbc MissileY0 
-        sta MissileHeight0
+        sta MissileHeight0	; DO I NEED THIS ? IS this causing a bug? 
         
         lda #0
         sec
@@ -462,23 +462,31 @@ MissileCollision subroutine
 .collision
 
 	txa
-        tay
-        pha
+        tay		; Move the player we are looking at into the Y register
+        pha		; Save the contents of the X register
         
-        lda MissileY0,y
-        ldx XPos0,y
+        lda MissileY0,y	; A contains missile Y coordinate  
+        ldx XPos0,y	; X contains missile X coordinate
         
-        jsr CleanDirt ; NOT WORKING
+        jsr CleanDirt ; NOT WORKING CORRECTLY
+        bmi .nocollision2
+        
         
         pla
-	tax
+	tax		; Load the player we are looking at into the X register		
 
+	; Add to the player score if there was a collision
 	clc
         sed
         lda Score0,x
         adc #1	
         sta Score0,x
         cld
+        jmp .nocollision
+        
+.nocollision2
+	pla
+        tax
 .nocollision
 	rts
         ; end add one to score
@@ -601,7 +609,7 @@ DivideRowLoop
         bcs NoBrickFound
 ; Now that we have the line, get byte and bit offset for brick
 	clc
-        adc #DirtHeight
+        adc #DirtHeight*2
 	pha	; save the remainder to return as result
 	txa
         clc
