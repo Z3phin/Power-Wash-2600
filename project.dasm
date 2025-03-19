@@ -87,7 +87,7 @@ Start
         lda #$ff
 SetupDirt
         sta Dirt,x
-        txa ; (un)comment for a 'random' looking pattern
+        ;txa ; (un)comment for a 'random' looking pattern
         inx
         cpx #BytesPerRow*NumDirtRows
         bne SetupDirt
@@ -466,7 +466,7 @@ MissileCollision subroutine
         pha
         
         lda MissileY0,y
-        ldx MissileX0,y
+        ldx XPos0,y
         
         jsr CleanDirt ; NOT WORKING
         
@@ -592,10 +592,10 @@ CleanDirt
         ldy #$ff
         sec
         sbc #DirtYStart	; subtract top Y of dirt field
-; Divide by dirrt height
+; Divide by dirt height
 DivideRowLoop
 	iny
-        sbc #DirtHeight
+        sbc #DirtHeight*2
 	bcs DivideRowLoop	; loop until < 0
         cpy #NumDirtRows
         bcs NoBrickFound
