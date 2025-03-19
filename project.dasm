@@ -602,20 +602,22 @@ MoveJoystick0 subroutine
         inx
 .SkipMoveRight
 	stx XPos0
-
+; Move Vertically
 	ldy MissileY0
-        lda #%00100000	;Up?
+        lda #%00010000	;Up?
         bit SWCHA
         bne .SkipMoveUp
         cpy #1
         bcc .SkipMoveUp
         dey
+        dey
 .SkipMoveUp
-        lda #%00010000	;down?
+        lda #%00100000	;down?
         bit SWCHA
         bne .SkipMoveDown
         cpy #DirtYStart+(DirtHeight*2*NumDirtRows)
         bcs .SkipMoveDown
+        iny
         iny
 .SkipMoveDown
         sty MissileY0  
@@ -647,18 +649,20 @@ MoveJoystick1 subroutine
         
 ; Move Vertically
 	ldy MissileY1
-        lda #$02	;Up?
+        lda #$01	;Up?
         bit SWCHA
         bne .SkipMoveUp
         cpy #1
         bcc .SkipMoveUp
         dey
+        dey
 .SkipMoveUp
-        lda #$01	;down?
+        lda #$02	;down?
         bit SWCHA
         bne .SkipMoveDown
         cpy #DirtYStart+DirtHeight*2*NumDirtRows
         bcs .SkipMoveDown
+        iny
         iny
 .SkipMoveDown
         sty MissileY1   
