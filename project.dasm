@@ -200,7 +200,7 @@ NextFrame
 	; Setup background colour and scoremode ready for scoreboard
         lda #$00
         sta COLUBK
-        lda #5
+        lda #0
         sta CTRLPF	; Symmetry
 
         sta WSYNC
@@ -216,7 +216,7 @@ NextFrame
         TIMER_SETUP 192 
         jsr DrawScoreboard
         
-        ; Set Background to blue
+        ; Set Background to green? blue?
         lda #$ba
         sta COLUBK
         
@@ -479,7 +479,7 @@ ScanLoop1a
         sta WSYNC
         sta PF1
         ; Turn playfield reflection off (and turn score mode off)
-        lda #%00010100
+        lda #%00000000
         sta CTRLPF
         rts
 
