@@ -28,6 +28,11 @@ MissileY0	byte
 MissileY1	byte
 MissileX0	byte
 MissileX1	byte
+
+Pressed 	byte
+
+
+
 MissileHeight0  byte
 MissileHeight1  byte
 MissileVel0	byte
@@ -46,7 +51,7 @@ SpritePtr	word
 PFPtr		word
 
 ; Joystick Button 
-Pressed 	byte
+
 
 ; Score Font Buffer 2x5 array
 FontBuf 	ds 10
@@ -290,24 +295,30 @@ DrawLoop
         sta PF1                        
         sta PF2                  
         
+        lda MissileVel0
+        bmi .DisableMissile0
         stx Temp
         lda MissileY0
         cmp Temp		; If the scanline is more than the Missile Y, disable the missile
         lda #2
         bcs .EnableMissile0
+.DisableMissile0
         lda #0
 .EnableMissile0
-        sta ENAM0		; Takes 14-16 machine cycles
+        sta ENAM0		; Takes 14-16 machine cycles ; TODO Update
         
+        lda MissileVel1
+        bmi .DisableMissile1
         lda MissileY1	
         sec			; Set carry
         sbc Temp				
         lda #2		
         bcs .EnableMissile1
+.DisableMissile1
         lda #0			
 .EnableMissile1 	
 	sta ENAM1		; Takes 14-16 machine cycles   
-        			; At MAX this is 32 machine cycles
+        			; At MAX this is 32 machine cycles ;TODO update
                                 
         cpx #DirtYStart
         bmi .innerLoop
@@ -375,11 +386,12 @@ DoneDirtDraw
                
         sta CXCLR
         
-       	lda #0
-        ;jsr JoystickButton1
-        ;jsr JoystickButton
-        ;jsr FireButton0
-        ;jsr FireButton1
+        lda INPT4
+	sta MissileVel0
+        
+        lda INPT5
+	sta MissileVel1 
+        
         jsr MoveJoystick0
         jsr MoveJoystick1
         
@@ -669,33 +681,6 @@ MoveJoystick1 subroutine
         
 	rts
 
-; Player 0 Button
-; ---------------
-
-FireButton0 subroutine
-	bit INPT4	  ; read Joystick 1 button
-        bmi .NoFireButton ; bit 7 set?
-        lda MissileVel0   ; Check if missile is already fired. 
-        ror 		  ; Move value into carry to be checked easily
-        bcs .NoFireButton ; Skip firing the missile (do not add on to velocity)
-        inc MissileVel0
-.NoFireButton
-	rts
-
-; Player 1 Button
-; ---------------
-
-FireButton1 subroutine
-	bit INPT5	  ; read Joystick 1 button
-        bmi .NoFireButton ; bit 7 set?
-        lda MissileVel1   ; Check if missile is already fired. 
-        ror ; Move value into carry to be checked easily
-        bcs .NoFireButton ; Skip firing the missile 
-        inc MissileVel1
-.NoFireButton
-	rts
-
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; 		Set Horizontal Position
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -726,50 +711,6 @@ DivideLoop
 ; 		      Miscellaneous 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;        
 
-
-; This will eventually be replaced by collisions increasing the score
-JoystickButton subroutine
-        bit INPT4
-        bmi .SetNotPressed ; if the button is not pressed, set the pressed flag to 0
-       	lda Pressed	   ; Otherwise, if it is already pressed, do not do anything 
-        lsr
-        bcs .skip           
-        inc Pressed        ; Otherwise, set the flag nad add one to the score 
-              
-        jmp .skip
-.SetNotPressed
-	lda Pressed
-        eor %00000001
-        sta Pressed
-.skip	
-	rts
-        
-JoystickButton1 subroutine
-        bit INPT5
-        bmi .SetNotPressed ; if the button is not pressed, set the pressed flag to 0 
-	lda Pressed	   ; Otherwise, if it is already pressed, do not do anything
-        lsr
-        lsr
-        bcs .skip           
-        lda #2        ; Otherwise, set the flag nad add one to the score 
-        sta Pressed
-        
-        ; Add one to the score
-        clc
-        sed
-        lda Score1
-        adc #1	
-        sta Score1
-        cld
-        ; end add one to score
-        
-        jmp .skip
-.SetNotPressed
-	lda Pressed
-        eor %00000010
-        sta Pressed
-.skip	
-	rts
         
 	org $FF00
 
