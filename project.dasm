@@ -221,40 +221,7 @@ NextFrame
         ; Set Background to green? blue?
         lda #$ba
         sta COLUBK
-        
-        ; DRAW PLAYER LOOP
-        ; ----------------
-        
-        lda SpriteHeight
-        sta Temp
-DrawSpriteLoop
-	ldy Temp
-        
-        lda (ColourPtr0),y	; Colour for both lines
-        sta ColP0		; A -> ColP0
-        lda (SpritePtr),y	; Bitmap for first line
-        sta GRP0		; A -> [GRP0] (delayed due to VDELP0)
-        
-        lda (ColourPtr1),y
-        tax
-        lda (SpritePtr),y
-        tay
-        
-        lda ColP0 
-        sta WSYNC
-        ; HBLANK
-        sty GRP1	;GRP0 also updated due to VDELP0
-        ; Store the player colours
-        stx COLUP1
-        sta COLUP0
-        
-        dec Temp
-        
-        lda Temp 
-        sta WSYNC
-        
-        bne DrawSpriteLoop
-        
+                
         lda #0
         sta GRP0
         sta GRP1
@@ -267,7 +234,6 @@ DrawSpriteLoop
         
         lda #$54
         sta COLUPF
-
 	
         ; Y contains the dirt row we are on.
         ; X contains the scanline we are on.
@@ -297,6 +263,7 @@ DrawLoop
         
         stx Temp
         
+        lda #%1000000
         bit MissileVel0
         bmi .DisableMissile0	; if taken, 13
         
@@ -309,7 +276,7 @@ DrawLoop
 .EnableMissile0
         sta ENAM0		; 21-23 machine cycles
         
-        
+        lda #%1000000
         bit MissileVel1
         bmi .DisableMissile1	; if taken, 13
         
@@ -366,7 +333,7 @@ DrawLoop
         bne .innerLoop
         beq DrawLoop		; Total 55 machine cycles used here, 21 machine cycles free 
 
-DoneDirtDraw
+DoneDirtDraw 
 	sta WSYNC
         
         ; Turn off missiles and playfield data
@@ -376,6 +343,47 @@ DoneDirtDraw
         sta PF2
         sta ENAM0
         sta ENAM1
+        
+ ; DRAW PLAYER LOOP
+ ; ----------------
+        
+        lda SpriteHeight
+        sta Temp
+DrawSpriteLoop
+	ldy Temp
+        
+        lda (ColourPtr0),y	; Colour for both lines
+        sta ColP0		; A -> ColP0
+        lda (SpritePtr),y	; Bitmap for first line
+        sta GRP0		; A -> [GRP0] (delayed due to VDELP0)
+        
+        lda (ColourPtr1),y
+        tax
+        lda (SpritePtr),y
+        tay
+        
+        lda ColP0 
+        sta WSYNC
+        ; HBLANK
+        sty GRP1	;GRP0 also updated due to VDELP0
+        
+        ; Store the player colours
+        stx COLUP1
+        sta COLUP0
+        
+        dec Temp
+        
+        lda Temp 
+        sta WSYNC
+        
+        bne DrawSpriteLoop
+        
+        ; TURN OFF PLAYER SPRITES 
+        
+        lda #0
+        sta GRP0
+        sta GRP1
+     
                
         TIMER_WAIT
 
@@ -617,7 +625,7 @@ MoveJoystick0 subroutine
 	lda #%10000000	;Right?
 	bit SWCHA 
 	bne .SkipMoveRight
-        cpx #153
+        cpx #152
         bcs .SkipMoveRight
         inx
 .SkipMoveRight
@@ -661,7 +669,7 @@ MoveJoystick1 subroutine
 	lda #$08	;Right?
 	bit SWCHA 
 	bne .SkipMoveRight
-        cpx #153	; Max Right
+        cpx #152	; Max Right
         bcs .SkipMoveRight
         inx
 .SkipMoveRight
