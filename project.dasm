@@ -29,12 +29,8 @@ MissileY1	byte
 MissileX0	byte
 MissileX1	byte
 
-Pressed 	byte
+MissileHeight1  byte 	; For some reason, removing this causes a graphical issue
 
-
-
-MissileHeight0  byte
-MissileHeight1  byte
 MissileVel0	byte
 MissileVel1	byte
 
@@ -64,14 +60,14 @@ DefaultYPos	equ #0
 Player0Colour   equ #$94
 Player1Colour   equ #$42
 
-DirtHeight	equ 8	; Height of each dirt spot in 2xScanlines
-NumDirtRows	equ 6	; Number of dirt rows 
+DirtHeight	equ #8	; Height of each dirt spot in 2xScanlines
+NumDirtRows	equ #6	; Number of dirt rows 
 NDR		equ NumDirtRows
-DirtYStart	equ 32 
+DirtYStart	equ #32 
 
 ; TODO use
-BytesPerRow 	equ 6 	; Number of bytes (8 x 6 = 42 bits)
-DirtPerRow 	equ 40 	; Number of Dirt spots per row 
+BytesPerRow 	equ #6 	; Number of bytes (8 x 6 = 42 bits)
+DirtPerRow 	equ #40 	; Number of Dirt spots per row 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Code segment
@@ -119,7 +115,6 @@ SetupDirt
         sta Score0
         sta Score1
         
-        sta MissileHeight0
         sta MissileHeight1
         sta MissileY0
         sta MissileY1
@@ -127,15 +122,21 @@ SetupDirt
         sta MissileVel1
         
         ; Initial Player and missile X positions
+        ; Player 0
        	lda #40
         sta XPos0
         sta MissileX0
+        
+        ; Player 1
         lda #112
         sta XPos1
         sta MissileX1
+        
+        ; Set delay for displaying P0 until GRP1 is set
         lda #1
-        sta VDELP0	; Set delay for displaying P0 until GRP1 is set
+        sta VDELP0	
          
+        ; Set horizontal positions 
         lda XPos0
         ldx #0
         jsr SetHorizPos
@@ -187,19 +188,20 @@ NextFrame
         ; Offset the missile0 to the center of sprite0
         lda XPos0
         clc
-        adc #4
+        adc #4	; Offset
         ldx #2
         jsr SetHorizPos
         
         ; Offset the missile1 to the center of sprite1
         lda XPos1
-        adc #4
+        adc #4	; Offset
         ldx #3
         jsr SetHorizPos
         
 	; Setup background colour and scoremode ready for scoreboard
         lda #$00
         sta COLUBK
+        
         lda #0
         sta CTRLPF	; Symmetry
 
@@ -259,16 +261,14 @@ DrawSpriteLoop
         lda #$aF
         sta COLUP0
         sta COLUP1
-        
-        ; DRAW MISSILES LOOP (to be combined with playfield graphics loop)
-        ; ------------------
                 
         ; PLAYFIELD GRAPHICS LOOP
         ; ------------------
         
         lda #$54
         sta COLUPF
-        
+
+	
         ; Y contains the dirt row we are on.
         ; X contains the scanline we are on.
         
@@ -293,36 +293,44 @@ DrawLoop
         lda #0			; Remove what was left in the Playfield registers
         sta PF0
         sta PF1                        
-        sta PF2                  
+        sta PF2             	; 11 machine cycles     
         
-        lda MissileVel0
-        bmi .DisableMissile0
         stx Temp
+        
+        bit MissileVel0
+        bmi .DisableMissile0	; if taken, 13
+        
         lda MissileY0
         cmp Temp		; If the scanline is more than the Missile Y, disable the missile
-        lda #2
+        lda #2			; 	
         bcs .EnableMissile0
 .DisableMissile0
         lda #0
 .EnableMissile0
-        sta ENAM0		; Takes 14-16 machine cycles ; TODO Update
+        sta ENAM0		; 21-23 machine cycles
         
-        lda MissileVel1
-        bmi .DisableMissile1
+        
+        bit MissileVel1
+        bmi .DisableMissile1	; if taken, 13
+        
         lda MissileY1	
-        sec			; Set carry
-        sbc Temp				
-        lda #2		
+        cmp Temp			; Set carry				
+        lda #2	
         bcs .EnableMissile1
 .DisableMissile1
         lda #0			
 .EnableMissile1 	
-	sta ENAM1		; Takes 14-16 machine cycles   
-        			; At MAX this is 32 machine cycles ;TODO update
+	sta ENAM1		; Takes 21-23 machine cycles
+        			; Both Off -> 26
+                                ; One on   -> 34-36
+                                ; Both on  -> 42-46
+        			
                                 
         cpx #DirtYStart
-        bmi .innerLoop
-                           
+        bmi .innerLoop		; 6 machine cycles
+        			; 52 + 11 = 63 machine cycles MAX
+                                ; 32 + 11 = 43 Min cycles
+                           	
         
         ; Next Scanline - draw playfield data
         ; -----------------------------------
@@ -421,7 +429,7 @@ MissileCollision subroutine
         lda MissileY0,y	; A contains missile Y coordinate  
         ldx XPos0,y	; X contains missile X coordinate
         
-        jsr CleanDirt ; NOT WORKING CORRECTLY
+        jsr CleanDirt
         bmi .nocollision2
         
         
@@ -552,17 +560,17 @@ GetBCDBitmap subroutine
 CleanDirt
         ldy #$ff
         sec
-        sbc #DirtYStart	; subtract top Y of dirt field
+        sbc DirtYStart	; subtract top Y of dirt field
 ; Divide by dirt height
 DivideRowLoop
 	iny
-        sbc #DirtHeight*2
+        sbc DirtHeight*2	; #
 	bcs DivideRowLoop	; loop until < 0
-        cpy #NumDirtRows
-        bcs NoBrickFound
+        cpy NumDirtRows		; #
+        bcs NoBrickFound	
 ; Now that we have the line, get byte and bit offset for brick
 	clc
-        adc #DirtHeight*2
+        adc DirtHeight*2	; #
 	pha	; save the remainder to return as result
 	txa
         clc
@@ -627,7 +635,7 @@ MoveJoystick0 subroutine
         lda #%00100000	;down?
         bit SWCHA
         bne .SkipMoveDown
-        cpy #DirtYStart+(DirtHeight*2*NumDirtRows)
+        cpy #DirtYStart+DirtHeight*2*NumDirtRows
         bcs .SkipMoveDown
         iny
         iny
