@@ -119,10 +119,16 @@ SetupDirt
         sta Score1
         
         sta MissileHeight1
-        sta MissileY0
-        sta MissileY1
+        
+        ; Set Missiles off? 
+        lda #1
         sta MissileVel0
         sta MissileVel1
+        
+        ; Set Reticles to centre
+        lda #20
+        sta MissileY0
+        sta MissileY1
         
         ; Initial Player and missile X positions
         ; Player 0
@@ -197,6 +203,7 @@ NextFrame
         
         ; Offset the missile1 to the center of sprite1
         lda XPos1
+        clc
         adc #4	; Offset
         ldx #3
         jsr SetHorizPos
@@ -207,6 +214,49 @@ NextFrame
         
         lda #0
         sta CTRLPF	; Symmetry
+        
+        
+        ; Make the missile big if it is Reticle Mode for player 0
+        lda MissileVel0
+        bmi CursorSize0
+        lda #0
+        jmp StoreSize0
+CursorSize0
+	lda #%00011000
+StoreSize0
+	sta NUSIZ0
+
+	; Make the missile big if it is Reticle Mode for player 1
+        lda MissileVel1
+        bmi CursorSize1
+        lda #0
+        jmp StoreSize1
+CursorSize1
+	lda #%00011000
+StoreSize1
+	sta NUSIZ1
+        
+        ; Recolour missile for either Reticle Mode or Stream Mode
+        lda MissileVel0
+        bmi ReticleColour0
+        lda #$af 
+        jmp StoreColour0
+ReticleColour0
+	lda #Player0Colour
+StoreColour0
+	sta MissileColour0
+        
+        ; Recolour missile for either Reticle Mode or Stream Mode
+        lda MissileVel1
+        bmi ReticleColour1
+        lda #$af 
+        jmp StoreColour1
+ReticleColour1
+	lda #Player1Colour
+StoreColour1
+	sta MissileColour1
+        
+        
 
         sta WSYNC
         sta HMOVE ; Apply horizontal offset 
@@ -218,7 +268,7 @@ NextFrame
 ;	            DRAWING
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
 	
-        TIMER_SETUP 192 
+        TIMER_SETUP 192
         jsr DrawScoreboard
         
         ; Set Background to green? blue?
@@ -311,6 +361,8 @@ DrawLoop
         ; Next Scanline - draw playfield data
         ; -----------------------------------
         sta WSYNC
+        dec DirtHeightCounter	
+        
         
         ; HBLANK
         lda Dirt+NumDirtRows*0,y
@@ -322,8 +374,7 @@ DrawLoop
       	; END HBLANK
       	
         inx			 ; Increment scanline counter	
-        
-        nop			 ; timing - not counted towards total machine cycle uses
+        	         ; timing
        
         lda Dirt+NumDirtRows*3,y
         sta PF0
@@ -333,8 +384,7 @@ DrawLoop
         sta PF2			 ; 21 machine cycles 
         			 ; TOTAL for PFx is 42 machine cycles. 76 - 42 machine cycles = 34	 
         
-        dec DirtHeightCounter	
-        
+        lda DirtHeightCounter
         bne .innerLoop
         beq DrawLoop		; Total 55 machine cycles used here, 21 machine cycles free 
 
@@ -423,48 +473,6 @@ NoStream1
         
         lda INPT5
 	sta MissileVel1 
-
-
-	; Make the missile big if it is Reticle Mode for player 0
-        lda MissileVel0
-        bmi CursorSize0
-        lda #0
-        jmp StoreSize0
-CursorSize0
-	lda #%00011000
-StoreSize0
-	sta NUSIZ0
-
-	; Make the missile big if it is Reticle Mode for player 1
-        lda MissileVel1
-        bmi CursorSize1
-        lda #0
-        jmp StoreSize1
-CursorSize1
-	lda #%00011000
-StoreSize1
-	sta NUSIZ1
-        
-        ; Recolour missile for either Reticle Mode or Stream Mode
-        lda MissileVel0
-        bmi ReticleColour0
-        lda #$af 
-        jmp StoreColour0
-ReticleColour0
-	lda #Player0Colour
-StoreColour0
-	sta MissileColour0
-        
-        ; Recolour missile for either Reticle Mode or Stream Mode
-        lda MissileVel1
-        bmi ReticleColour1
-        lda #$af 
-        jmp StoreColour1
-ReticleColour1
-	lda #Player1Colour
-StoreColour1
-	sta MissileColour1
-        
         
         ; Read Movement Input
         jsr MoveJoystick0
