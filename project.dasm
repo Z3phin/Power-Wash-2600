@@ -69,7 +69,7 @@ NDR		equ NumDirtRows
 DirtYStart	equ #32 
 
 ; TODO use
-BytesPerRow 	equ #6 	; Number of bytes (8 x 6 = 42 bits)
+BytesPerRow 	equ #6 	; Number of bytes (8 x 6 = 48 bits) PF0 only 4 bits
 DirtPerRow 	equ #40 	; Number of Dirt spots per row 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
