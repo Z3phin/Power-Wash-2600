@@ -34,6 +34,9 @@ MissileHeight1  byte 	; For some reason, removing this causes a graphical issue
 MissileVel0	byte
 MissileVel1	byte
 
+MissileColour0  byte
+MissileColour1  byte
+
 ; Dirt 
 Dirt		ds 36 	; 6x6 bytes (Dirt map)
 ; Sprite Pointers
@@ -225,8 +228,9 @@ NextFrame
         lda #0
         sta GRP0
         sta GRP1
-        lda #$aF
+        lda MissileColour0
         sta COLUP0
+        lda MissileColour1
         sta COLUP1
                 
         ; PLAYFIELD GRAPHICS LOOP
@@ -265,38 +269,54 @@ DrawLoop
         
         lda #%1000000
         bit MissileVel0
-        bmi .DisableMissile0	; if taken, 13
+        bmi .DrawReticle0	; if taken, 13
         
         lda MissileY0
-        cmp Temp		; If the scanline is more than the Missile Y, disable the missile
-        lda #2			; 	
-        bcs .EnableMissile0
+        cmp Temp		; If the scanline is more than the Missile Y, disable the missile				
+        bcc .EnableMissile0
+	jmp .DisableMissile0
+.DrawReticle0
+	lda MissileY0
+        cmp Temp		
+        beq .Finish0		; 7+8 -> branch taken -> 3
 .DisableMissile0
         lda #0
+        jmp .Finish0
 .EnableMissile0
-        sta ENAM0		; 21-23 machine cycles
-        
+	lda #2
+.Finish0
+	sta ENAM0
+            
+                
         lda #%1000000
         bit MissileVel1
-        bmi .DisableMissile1	; if taken, 13
+        bmi .DrawReticle1	;8
         
-        lda MissileY1	
-        cmp Temp			; Set carry				
-        lda #2	
-        bcs .EnableMissile1
+        lda MissileY1
+        cmp Temp		; If the scanline is more than the Missile Y, disable the missile				
+        bcc .EnableMissile1
+	jmp .DisableMissile1
+.DrawReticle1
+	lda MissileY1
+        cmp Temp		
+        beq .Finish1		
 .DisableMissile1
-        lda #0			
-.EnableMissile1 	
-	sta ENAM1		; Takes 21-23 machine cycles
-        			; Both Off -> 26
-                                ; One on   -> 34-36
-                                ; Both on  -> 42-46
-        			
+        lda #0
+        jmp .Finish1
+.EnableMissile1
+	lda #2
+.Finish1
+	sta ENAM1	
+        			; 18 cycles for drawing reticle (button not pressed)
+                                ; 21 cycles for drawing the stream (button pressed)
+                                ; 27 cycles for drawing above (button pressed)
                                 
+                                ; 54 at max 
+                                ; 77 cycles -> 1 to many if both are on
+        			
+        ;ldx Temp                
         cpx #DirtYStart
-        bmi .innerLoop		; 6 machine cycles
-        			; 52 + 11 = 63 machine cycles MAX
-                                ; 32 + 11 = 43 Min cycles
+        bmi .innerLoop		
                            	
         
         ; Next Scanline - draw playfield data
@@ -394,20 +414,80 @@ DrawSpriteLoop
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 	TIMER_SETUP 29
- 
+ 		
+        ; Skip Collisions in Reticle Mode
+        lda #%10000000
+        bit MissileVel0
+        bmi NoStream0
  	ldx #0
  	jsr MissileCollision
+NoStream0
+        ; Skip Collisions in Reticle Mode
+	lda #%10000000
+        bit MissileVel1
+        bmi NoStream1
         ldx #1
         jsr MissileCollision
-               
+NoStream1 
+
+	; Clear Collisions
         sta CXCLR
         
+        
+        ; Read Button Input for next frame
         lda INPT4
 	sta MissileVel0
         
         lda INPT5
 	sta MissileVel1 
+
+
+	; Make the missile big if it is Reticle Mode for player 0
+        lda #%10000000
+        bit MissileVel0
+        bmi CursorSize0
+        lda #0
+        jmp StoreSize0
+CursorSize0
+	lda #%00011000
+StoreSize0
+	sta NUSIZ0
+
+	; Make the missile big if it is Reticle Mode for player 1
+        lda #%10000000
+        bit MissileVel1
+        bmi CursorSize1
+        lda #0
+        jmp StoreSize1
+CursorSize1
+	lda #%00011000
+StoreSize1
+	sta NUSIZ1
         
+        ; Recolour missile for either Reticle Mode or Stream Mode
+        lda #%10000000
+        bit MissileVel0
+        bmi ReticleColour0
+        lda #$af 
+        jmp StoreColour0
+ReticleColour0
+	lda #Player0Colour
+StoreColour0
+	sta MissileColour0
+        
+        ; Recolour missile for either Reticle Mode or Stream Mode
+        lda #%10000000
+        bit MissileVel1
+        bmi ReticleColour1
+        lda #$af 
+        jmp StoreColour1
+ReticleColour1
+	lda #Player1Colour
+StoreColour1
+	sta MissileColour1
+        
+        
+        ; Read Movement Input
         jsr MoveJoystick0
         jsr MoveJoystick1
         
@@ -625,7 +705,7 @@ MoveJoystick0 subroutine
 	lda #%10000000	;Right?
 	bit SWCHA 
 	bne .SkipMoveRight
-        cpx #152
+        cpx #153
         bcs .SkipMoveRight
         inx
 .SkipMoveRight
@@ -669,7 +749,7 @@ MoveJoystick1 subroutine
 	lda #$08	;Right?
 	bit SWCHA 
 	bne .SkipMoveRight
-        cpx #152	; Max Right
+        cpx #153	; Max Right
         bcs .SkipMoveRight
         inx
 .SkipMoveRight
