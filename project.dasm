@@ -269,7 +269,7 @@ DrawLoop
         
         lda #%1000000
         bit MissileVel0
-        bmi .DrawReticle0	; if taken, 13
+        bmi .DrawReticle0	
         
         lda MissileY0
         cmp Temp		; If the scanline is more than the Missile Y, disable the missile				
@@ -278,7 +278,7 @@ DrawLoop
 .DrawReticle0
 	lda MissileY0
         cmp Temp		
-        beq .Finish0		; 7+8 -> branch taken -> 3
+        beq .EnableMissile0		
 .DisableMissile0
         lda #0
         jmp .Finish0
@@ -290,7 +290,7 @@ DrawLoop
                 
         lda #%1000000
         bit MissileVel1
-        bmi .DrawReticle1	;8
+        bmi .DrawReticle1	
         
         lda MissileY1
         cmp Temp		; If the scanline is more than the Missile Y, disable the missile				
@@ -299,7 +299,7 @@ DrawLoop
 .DrawReticle1
 	lda MissileY1
         cmp Temp		
-        beq .Finish1		
+        beq .EnableMissile1		
 .DisableMissile1
         lda #0
         jmp .Finish1
@@ -308,13 +308,16 @@ DrawLoop
 .Finish1
 	sta ENAM1	
         			; 18 cycles for drawing reticle (button not pressed)
-                                ; 21 cycles for drawing the stream (button pressed)
+                                ; 20 cycles for drawing the stream (button pressed)
                                 ; 27 cycles for drawing above (button pressed)
                                 
                                 ; 54 at max 
+                                
+                                ; Overall
+                                ; 18 + 18 + 23 = 59
+                                ; 21 + 21 + 23 = 65
                                 ; 77 cycles -> 1 to many if both are on
-        			
-        ;ldx Temp                
+        			              
         cpx #DirtYStart
         bmi .innerLoop		
                            	
