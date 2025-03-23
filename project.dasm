@@ -245,30 +245,27 @@ NextFrame
         ldy #$ff ; Start at -1 ; 
         ldx #$ff
 DrawLoop
-	iny 			; Go to next brick row
-        
+	iny 			; Go to next brick row 
         lda #DirtHeight
         sta DirtHeightCounter
         cpy #NumDirtRows
         bcs DoneDirtDraw
-
+        
 .innerLoop
 	
         ; Enable missiles
         ; -------------------
 	
 	inx			; increment scanline counter
+        stx Temp
         sta WSYNC
         
-        lda #0			; Remove what was left in the Playfield registers
+        lda #0			
         sta PF0
         sta PF1                        
-        sta PF2             	; 11 machine cycles     
+        sta PF2
         
-        stx Temp
-        
-        lda #%1000000
-        bit MissileVel0
+        lda MissileVel0
         bmi .DrawReticle0	
         
         lda MissileY0
@@ -288,9 +285,8 @@ DrawLoop
 	sta ENAM0
             
                 
-        lda #%1000000
-        bit MissileVel1
-        bmi .DrawReticle1	
+        lda MissileVel1
+        bmi .DrawReticle1
         
         lda MissileY1
         cmp Temp		; If the scanline is more than the Missile Y, disable the missile				
@@ -307,16 +303,6 @@ DrawLoop
 	lda #2
 .Finish1
 	sta ENAM1	
-        			; 18 cycles for drawing reticle (button not pressed)
-                                ; 20 cycles for drawing the stream (button pressed)
-                                ; 27 cycles for drawing above (button pressed)
-                                
-                                ; 54 at max 
-                                
-                                ; Overall
-                                ; 18 + 18 + 23 = 59
-                                ; 21 + 21 + 23 = 65
-                                ; 77 cycles -> 1 to many if both are on
         			              
         cpx #DirtYStart
         bmi .innerLoop		
@@ -419,15 +405,13 @@ DrawSpriteLoop
 	TIMER_SETUP 29
  		
         ; Skip Collisions in Reticle Mode
-        lda #%10000000
-        bit MissileVel0
+        lda MissileVel0
         bmi NoStream0
  	ldx #0
  	jsr MissileCollision
 NoStream0
         ; Skip Collisions in Reticle Mode
-	lda #%10000000
-        bit MissileVel1
+        lda MissileVel1
         bmi NoStream1
         ldx #1
         jsr MissileCollision
@@ -446,8 +430,7 @@ NoStream1
 
 
 	; Make the missile big if it is Reticle Mode for player 0
-        lda #%10000000
-        bit MissileVel0
+        lda MissileVel0
         bmi CursorSize0
         lda #0
         jmp StoreSize0
@@ -457,8 +440,7 @@ StoreSize0
 	sta NUSIZ0
 
 	; Make the missile big if it is Reticle Mode for player 1
-        lda #%10000000
-        bit MissileVel1
+        lda MissileVel1
         bmi CursorSize1
         lda #0
         jmp StoreSize1
@@ -468,8 +450,7 @@ StoreSize1
 	sta NUSIZ1
         
         ; Recolour missile for either Reticle Mode or Stream Mode
-        lda #%10000000
-        bit MissileVel0
+        lda MissileVel0
         bmi ReticleColour0
         lda #$af 
         jmp StoreColour0
@@ -479,8 +460,7 @@ StoreColour0
 	sta MissileColour0
         
         ; Recolour missile for either Reticle Mode or Stream Mode
-        lda #%10000000
-        bit MissileVel1
+        lda MissileVel1
         bmi ReticleColour1
         lda #$af 
         jmp StoreColour1
