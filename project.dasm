@@ -245,7 +245,7 @@ NextFrame
         ldy #$ff ; Start at -1 ; 
         ldx #$ff
 DrawLoop
-	iny 			; Go to next brick row 
+        iny 			; Go to next brick row 
         lda #DirtHeight
         sta DirtHeightCounter
         cpy #NumDirtRows
@@ -323,11 +323,7 @@ DrawLoop
       	
         inx			 ; Increment scanline counter	
         
-        nop			 ; timing - not counted towards total machine cycle use
-        nop			 ; timing	
-        nop			 ; timing	
-        
-        ; We have 8 machine cycles between these two (6 wasted machine cycles)
+        nop			 ; timing - not counted towards total machine cycle uses
        
         lda Dirt+NumDirtRows*3,y
         sta PF0
