@@ -29,42 +29,32 @@ MissileY1	byte
 MissileX0	byte
 MissileX1	byte
 
-MissileHeight1  byte 	; For some reason, removing this causes a graphical issue
-
 MissileVel0	byte
 MissileVel1	byte
 
 MissileColour0  byte
 MissileColour1  byte
 
-; Dirt 
-Dirt		ds 36 	; 6x6 bytes (Dirt map)
 ; Sprite Pointers
-
 ColourPtr0	word
 ColourPtr1	word
 SpritePtr	word
 
-; Playfield Pointer
-
-PFPtr		word
-
-; Joystick Button 
-
-
 ; Score Font Buffer 2x5 array
 FontBuf 	ds 10
 
-; NUMBER OF BYTES OF RAM USED = 71
+; Dirt 
+Dirt		ds 72 	; 6x10 bytes (Dirt map)
 
+ 
 ; Constants 
 SpriteHeight 	equ #16
 DefaultYPos	equ #0
 Player0Colour   equ #$94
 Player1Colour   equ #$42
 
-DirtHeight	equ #8	; Height of each dirt spot in 2xScanlines
-NumDirtRows	equ #6	; Number of dirt rows 
+DirtHeight	equ #4	; Height of each dirt spot in 2xScanlines
+NumDirtRows	equ #12	; Number of dirt rows 
 NDR		equ NumDirtRows
 DirtYStart	equ #32 
 
@@ -118,10 +108,7 @@ SetupDirt
         sta Score0
         sta Score1
         
-        sta MissileHeight1
-        
         ; Set Missiles off? 
-        lda #1
         sta MissileVel0
         sta MissileVel1
         
