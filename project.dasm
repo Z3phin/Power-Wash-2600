@@ -461,8 +461,7 @@ NoStream1
         bmi .NoReset
         dec WinFrameCounter
         bne .NoReset
-        lda WinFrames
-        sta WinFrameCounter
+        jsr GameReset
         jsr LoadDirt
 .NoReset
         
@@ -838,7 +837,39 @@ DivideLoop
 ; 		      Miscellaneous 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;        
 
+GameReset subroutine 
+	lda WinFrames
+        sta WinFrameCounter
         
+        ; Intitial Scores and missile positions
+        lda #0
+        sta Score0
+        sta Score1
+        
+        ; Set Missiles off? 
+        sta MissileVel0
+        sta MissileVel1
+        
+        ; Set Reticles to centre
+        lda #20
+        sta MissileY0
+        sta MissileY1
+        
+        ; Initial Player and missile X positions
+        ; Player 0
+       	lda #40
+        sta XPos0
+        sta MissileX0
+        
+        ; Player 1
+        lda #112
+        sta XPos1
+        sta MissileX1
+
+	
+	rts
+	
+
 	org $FF00
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
