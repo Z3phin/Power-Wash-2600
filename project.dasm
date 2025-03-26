@@ -17,6 +17,8 @@ DirtHeightCounter byte
 Score0		byte	; Player 0 score
 Score1		byte    ; Player 1 score
 
+NumDirtBlock 	word	
+
 ; Sprite Positions 
 XPos0		byte	
 XPos1		byte
@@ -35,6 +37,8 @@ MissileVel1	byte
 MissileColour0  byte
 MissileColour1  byte
 
+WinFrameCounter	byte
+
 ; Sprite Pointers
 ColourPtr0	word
 ColourPtr1	word
@@ -50,15 +54,17 @@ Dirt		ds 72 	; 6x12 bytes (Dirt map)
 ; Constants 
 SpriteHeight 	equ #16
 DefaultYPos	equ #0
-Player0Colour   equ #$94
-Player1Colour   equ #$42
+Player0Colour   equ $94
+Player1Colour   equ $42
+
+WinFrames 	equ 180
 
 DirtHeight	equ #4	; Height of each dirt spot in 2xScanlines
 NumDirtRows	equ #12	; Number of dirt rows 
 NDR		equ NumDirtRows
 DirtYStart	equ #32 
 
-; TODO use
+
 BytesPerRow 	equ #6 	; Number of bytes (8 x 6 = 48 bits) PF0 only 4 bits
 DirtPerRow 	equ #40 	; Number of Dirt spots per row 
 
@@ -95,6 +101,9 @@ Start
         sta ColourPtr1
         lda #>ColourFrame1
         sta ColourPtr1+1
+        
+        lda WinFrames
+        sta WinFrameCounter
         
         ; Intitial Scores and missile positions
         lda #0
@@ -450,6 +459,10 @@ NoStream1
         
         jsr TestAllClean
         bmi .NoReset
+        dec WinFrameCounter
+        bne .NoReset
+        lda WinFrames
+        sta WinFrameCounter
         jsr LoadDirt
 .NoReset
         
@@ -689,10 +702,13 @@ TestAllClean subroutine
         rts
                 
 LoadDirt subroutine
+	clc
         ldx #0
         lda #$ff
 .SetupLoop
         sta Dirt,x
+        
+        
         txa ; (un)comment for a 'random' looking pattern
         inx
         cpx #BytesPerRow*NumDirtRows
