@@ -19,6 +19,8 @@ Score1		byte    ; Player 1 score
 
 NumDirtBlock 	word	
 
+BKColour 	byte
+
 ; Sprite Positions 
 XPos0		byte	
 XPos1		byte
@@ -58,6 +60,8 @@ Player0Colour   equ $94
 Player1Colour   equ $42
 
 WinFrames 	equ 180
+
+GameBKColour	equ #$ba
 
 DirtHeight	equ #4	; Height of each dirt spot in 2xScanlines
 NumDirtRows	equ #12	; Number of dirt rows 
@@ -102,8 +106,11 @@ Start
         lda #>ColourFrame1
         sta ColourPtr1+1
         
-        lda WinFrames
+        lda #WinFrames
         sta WinFrameCounter
+        
+        lda #GameBKColour
+        sta BKColour
         
         ; Intitial Scores and missile positions
         lda #0
@@ -261,7 +268,7 @@ StoreColour1
         jsr DrawScoreboard
         
         ; Set Background to green? blue?
-        lda #$ba
+        lda BKColour
         sta COLUBK
                 
         lda #0
@@ -459,6 +466,22 @@ NoStream1
         
         jsr TestAllClean
         bmi .NoReset
+        
+        lda Score0
+        cmp Score1
+        bcc .Player1Win
+        bcs .Player0Win
+  	jmp .EndChangeColour
+.Player1Win
+        lda #Player1Colour-3
+        sta BKColour
+        jmp .EndChangeColour
+.Player0Win
+        lda #Player0Colour+3
+        sta BKColour
+.EndChangeColour
+        
+        
         dec WinFrameCounter
         bne .NoReset
         jsr GameReset
@@ -669,6 +692,7 @@ NoBrickFound
 	lda #$FF	; return -1 as result
         rts
 
+; Returns a negative number if not all clean 
 TestAllClean subroutine	
 	ldx #$FF
 .CheckRow
@@ -838,8 +862,11 @@ DivideLoop
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;        
 
 GameReset subroutine 
-	lda WinFrames
+	lda #WinFrames
         sta WinFrameCounter
+        
+        lda #GameBKColour
+        sta BKColour
         
         ; Intitial Scores and missile positions
         lda #0
