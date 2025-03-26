@@ -467,6 +467,16 @@ NoStream1
         jsr TestAllClean
         bmi .NoReset
         
+        lda WinFrameCounter
+        ror
+        ror
+        ror
+        ror
+        bcs .PlayerBK
+        lda #GameBKColour
+        sta BKColour
+        jmp .EndChangeColour
+.PlayerBK        
         lda Score0
         cmp Score1
         bcc .Player1Win
@@ -727,12 +737,13 @@ TestAllClean subroutine
 LoadDirt subroutine
 	clc
         ldx #0
-        lda #$ff
+        ;lda #$ff
+        lda #$10
 .SetupLoop
         sta Dirt,x
         
         
-        txa ; (un)comment for a 'random' looking pattern
+        ;txa ; (un)comment for a 'random' looking pattern
         inx
         cpx #BytesPerRow*NumDirtRows
         bne .SetupLoop
