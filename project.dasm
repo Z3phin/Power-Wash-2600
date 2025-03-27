@@ -670,13 +670,13 @@ CleanDirt
 ; Divide by dirt height
 DivideRowLoop
 	iny
-        sbc DirtHeight*2	; #
+        sbc #DirtHeight*2	; #
 	bcs DivideRowLoop	; loop until < 0
-        cpy NumDirtRows		; #
+        cpy #NumDirtRows		; #
         bcs NoBrickFound	
 ; Now that we have the line, get byte and bit offset for brick
 	clc
-        adc DirtHeight*2	; #
+        adc #DirtHeight*2	; #
 	pha	; save the remainder to return as result
 	txa
         clc
@@ -738,6 +738,8 @@ LoadDirt subroutine
 	clc
         ldx #0
         ;lda #$ff
+        lda NumDirtBlock
+        adc #$10
         lda #$10
 .SetupLoop
         sta Dirt,x
