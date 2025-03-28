@@ -10,7 +10,7 @@
         seg.u Variables
 	org $80
 
-Temp		byte	; Temp variable, used for variety of purposees
+Temp		word	; Temp variable, used for variety of purposees
 DirtHeightCounter byte
 
 ; Scores 
@@ -18,6 +18,9 @@ Score0		byte	; Player 0 score
 Score1		byte    ; Player 1 score
 
 NumDirtBlock 	word	
+NumDirtP0	word
+NumDirtP1	word
+CalcBuffer	word
 
 BKColour 	byte
 
@@ -116,6 +119,18 @@ Start
         lda #0
         sta Score0
         sta Score1
+        
+        sta NumDirtBlock
+        sta NumDirtBlock+1
+        
+        sta NumDirtP0
+        sta NumDirtP0+1
+        
+        sta NumDirtP1
+        sta NumDirtP1+1
+        
+        sta CalcBuffer
+        sta CalcBuffer+1
         
         ; Set Missiles off? 
         sta MissileVel0
@@ -549,6 +564,26 @@ MissileCollision subroutine
         adc #1	
         sta Score0,x
         cld
+        
+        txa
+        asl	; multiply x by two because we are working with a word 
+        tax
+        clc
+        lda NumDirtP0,x
+        adc #1
+        sta NumDirtP0,x
+        lda NumDirtP0+1,x
+        adc #0	; Possibly add the carry bit only
+        sta NumDirtP0+1,x
+        
+        ;CLC
+        ;LDA NUM
+        ;ADC RESULT
+        ;STA RESULT
+        ;LDA NUM+1
+        ;ADC RESULT+1
+        ;STA RESULT+1
+        
         jmp .nocollision
         
 .nocollision2
@@ -652,6 +687,81 @@ GetBCDBitmap subroutine
         bne .loop2
         rts
         
+; x contains which player we are looking at        
+CalculatePercentage subroutine
+	; (NumDirtP0,2x) * 100 / NumDirtBlocks
+	; First need to multiply x by 100 = 100x = 4( 4(4x + 2x) + x) = 
+        
+        txa
+        asl
+        tax
+        
+        ; Start Multiplication by 100
+        lda NumDirtP0,x
+        sta CalcBuffer
+        lda NumDirtP0+1,x
+        sta CalcBuffer+1 	; load NumDirtP0 into CalcBuffer
+        
+        asl
+        rol			; CalcBuffer = 2*NumDirtP0,2x
+        asl
+        rol			; CalcBuffer = 4*NumDirtP0,2x
+        
+        clc
+        lda NumDirtP0,x
+        adc CalcBuffer
+        sta CalcBuffer
+        lda NumDirtP0+1,x
+        adc CalcBuffer+1
+        sta CalcBuffer+1	; CalcBuffer = 5*NumDirtP0,2x
+        asl CalcBuffer
+        rol CalcBuffer+1	; CalcBuffer = 10*NumDirtP0,2x
+        
+        lda CalcBuffer
+        sta Temp
+        lda CalcBuffer+1
+        sta Temp+1		; Temp = 10*NumDirtP0,2x	
+        
+        
+        asl CalcBuffer	
+        rol CalcBuffer+1	; CalcBuffer = 20*NumDirtP0,2x
+        asl CalcBuffer
+        rol CalcBuffer+1	; CalcBuffer = 40*NumDirtP0,2x
+        
+        clc
+        lda Temp
+        adc CalcBuffer
+        sta CalcBuffer
+        lda Temp+1
+        adc CalcBuffer+1
+        sta CalcBuffer+1	; CalcBuffer = 50*NumDirtP0,2x
+        
+        asl CalcBuffer
+        rol CalcBuffer+1	; CalcBuffer = 100*NumDirtP0,2x
+        ; End Multiplication by 100
+        
+        
+        
+        ;LDA NUM       ;Start with RESULT = NUM
+        ;STA RESULT
+        ;LDA NUM+1
+        ;STA RESULT+1
+        ;ASL RESULT
+        ;ROL RESULT+1  ;RESULT = 2*NUM
+        ;ASL RESULT
+        ;ROL RESULT+1  ;RESULT = 4*NUM
+        ;CLC
+        ;LDA NUM
+        ;ADC RESULT
+        ;STA RESULT
+        ;LDA NUM+1
+        ;ADC RESULT+1
+        ;STA RESULT+1  ;RESULT = 5*NUM
+        ;ASL RESULT
+        ;ROL RESULT+1  ;RESULT = 10*NUM
+        
+        
+        
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;        
 ; 			Clean Dirt
 ;	     Originally created by Steven Hugg
@@ -733,23 +843,41 @@ TestAllClean subroutine
 .NotClean
 	lda #$FF
         rts
+        
+        
                 
 LoadDirt subroutine
 	clc
         ldx #0
-        ;lda #$ff
-        lda NumDirtBlock
-        adc #$10
-        lda #$10
+        
+        
+        lda #$FF	; TEMPORARY
 .SetupLoop
         sta Dirt,x
-        
-        
         ;txa ; (un)comment for a 'random' looking pattern
+        
+        sta Temp
+        clc
+        lda NumDirtBlock
+        adc Temp
+        sta NumDirtBlock
+        lda NumDirtBlock+1
+        adc #0			; Carry the bit
+        sta NumDirtBlock+1
+        	
+      	lda Temp	
         inx
         cpx #BytesPerRow*NumDirtRows
         bne .SetupLoop
         rts
+        
+        ;CLC
+        ;LDA NUM
+        ;ADC RESULT
+        ;STA RESULT
+        ;LDA NUM+1
+        ;ADC RESULT+1
+        ;STA RESULT+1
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;        
 ; 		Joystick Input Subroutines 
@@ -885,6 +1013,18 @@ GameReset subroutine
         lda #0
         sta Score0
         sta Score1
+        
+        sta NumDirtBlock
+        sta NumDirtBlock+1
+        
+        sta NumDirtP0
+        sta NumDirtP0+1
+        
+        sta NumDirtP1
+        sta NumDirtP1+1
+        
+        sta CalcBuffer
+        sta CalcBuffer+1
         
         ; Set Missiles off? 
         sta MissileVel0
