@@ -13,16 +13,13 @@
 Temp		word	; Temp variable, used for variety of purposees
 DirtHeightCounter byte
 
+RandomNum	byte
+
 RowCleaned	byte
 
 ; Scores 
 Score0		byte	; Player 0 score
 Score1		byte    ; Player 1 score
-
-NumDirtBlock 	word	
-NumDirtP0	word
-NumDirtP1	word
-CalcBuffer	word
 
 BKColour 	byte
 
@@ -55,7 +52,7 @@ SpritePtr	word
 FontBuf 	ds 10
 
 ; Dirt 
-Dirt		ds 78	; 6x12 bytes (Dirt map)
+Dirt		ds 72	; 6x12 bytes (Dirt map)
 
  
 ; Constants 
@@ -69,7 +66,7 @@ WinFrames 	equ 180
 GameBKColour	equ #$ba
 
 DirtHeight	equ #4	; Height of each dirt spot in 2xScanlines
-NumDirtRows	equ #13	; Number of dirt rows 
+NumDirtRows	equ #12	; Number of dirt rows 
 NDR		equ NumDirtRows
 DirtYStart	equ #32 
 
@@ -121,18 +118,6 @@ Start
         lda #0
         sta Score0
         sta Score1
-        
-        sta NumDirtBlock
-        sta NumDirtBlock+1
-        
-        sta NumDirtP0
-        sta NumDirtP0+1
-        
-        sta NumDirtP1
-        sta NumDirtP1+1
-        
-        sta CalcBuffer
-        sta CalcBuffer+1
         
         ; Set Missiles off? 
         sta MissileVel0
@@ -757,6 +742,18 @@ TestAllClean subroutine
         
                 
 LoadDirt subroutine
+	lda #%00001000
+        bit SWCHB
+        
+        beq .full
+        jsr LoadRandom
+        jmp .return
+.full
+	jsr LoadFull
+.return
+        rts
+        
+        
 	clc
         ldx #0
         
@@ -765,29 +762,65 @@ LoadDirt subroutine
 .SetupLoop
         sta Dirt,x
         ;txa ; (un)comment for a 'random' looking pattern
-        
-        sta Temp
-        clc
-        lda NumDirtBlock
-        adc Temp
-        sta NumDirtBlock
-        lda NumDirtBlock+1
-        adc #0			; Carry the bit
-        sta NumDirtBlock+1
-        	
-      	lda Temp	
         inx
         cpx #BytesPerRow*NumDirtRows
         bne .SetupLoop
         rts
         
-        ;CLC
-        ;LDA NUM
-        ;ADC RESULT
-        ;STA RESULT
-        ;LDA NUM+1
-        ;ADC RESULT+1
-        ;STA RESULT+1
+LoadFull
+	ldx #$FF	; TEMPORARY
+.FullLoop
+	inx
+        lda #$F0
+        sta Dirt+NumDirtRows*0,x
+        sta Dirt+NumDirtRows*3,x
+        
+        lda #$FF
+        sta Dirt+NumDirtRows*1,x
+        sta Dirt+NumDirtRows*2,x
+        sta Dirt+NumDirtRows*4,x
+        sta Dirt+NumDirtRows*5,x
+        
+        cpx #NumDirtRows-1
+        bne .FullLoop
+        
+        rts
+        
+LoadRandom
+	ldx #$FF
+        ldy RandomNum
+.randomLoop
+	inx
+	
+        lda NextFrame,y
+        and #$F0
+        sta Dirt+NumDirtRows*0,x
+        
+        iny
+        lda NextFrame,y
+        and #$F0
+        sta Dirt+NumDirtRows*3,x
+        
+        iny
+        lda NextFrame,y
+        sta Dirt+NumDirtRows*1,x
+        iny
+        lda NextFrame,y
+        sta Dirt+NumDirtRows*2,x
+        iny
+        lda NextFrame,y
+        sta Dirt+NumDirtRows*4,x
+        iny
+        lda NextFrame,y
+        sta Dirt+NumDirtRows*5,x
+        iny
+        
+        cpx #NumDirtRows-1
+        bne .randomLoop
+        
+        sty RandomNum
+        rts
+	
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;        
 ; 		Joystick Input Subroutines 
@@ -923,18 +956,6 @@ GameReset subroutine
         lda #0
         sta Score0
         sta Score1
-        
-        sta NumDirtBlock
-        sta NumDirtBlock+1
-        
-        sta NumDirtP0
-        sta NumDirtP0+1
-        
-        sta NumDirtP1
-        sta NumDirtP1+1
-        
-        sta CalcBuffer
-        sta CalcBuffer+1
         
         ; Set Missiles off? 
         sta MissileVel0
