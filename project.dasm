@@ -446,6 +446,9 @@ DrawSpriteLoop
         
         bne DrawSpriteLoop
         
+        lda #$04
+        sta COLUBK
+        
         ; TURN OFF PLAYER SPRITES 
         
         lda #0
@@ -481,38 +484,10 @@ NoStream1
         
         
         jsr TestAllClean
-        bmi .NoReset
+        bmi .nowin
         
-        lda WinFrameCounter
-        ror
-        ror
-        ror
-        ror
-        bcs .PlayerBK
-        lda #GameBKColour
-        sta BKColour
-        jmp .EndChangeColour
-.PlayerBK        
-        lda Score0
-        cmp Score1
-        bcc .Player1Win
-        bcs .Player0Win
-  	jmp .EndChangeColour
-.Player1Win
-        lda #Player1Colour-3
-        sta BKColour
-        jmp .EndChangeColour
-.Player0Win
-        lda #Player0Colour+3
-        sta BKColour
-.EndChangeColour
-        
-        
-        dec WinFrameCounter
-        bne .NoReset
-        jsr GameReset
-        jsr LoadDirt
-.NoReset
+        jsr GameWin
+.nowin
         
         ; Read Button Input for next frame
         lda INPT4
@@ -1064,6 +1039,40 @@ GameReset subroutine
 
 	
 	rts
+        
+GameWin subroutine 
+	
+	lda WinFrameCounter
+        ror
+        ror
+        ror
+        ror
+        bcs .PlayerBK
+        lda #GameBKColour
+        sta BKColour
+        jmp .EndChangeColour
+.PlayerBK        
+        lda Score0
+        cmp Score1
+        bcc .Player1Win
+        bcs .Player0Win
+  	jmp .EndChangeColour
+.Player1Win
+        lda #Player1Colour-3
+        sta BKColour
+        jmp .EndChangeColour
+.Player0Win
+        lda #Player0Colour+3
+        sta BKColour
+.EndChangeColour
+        dec WinFrameCounter
+        bne .noreset
+        
+        jsr GameReset
+        jsr LoadDirt
+        
+.noreset 
+	rts
 	
 
 	org $FF00
@@ -1076,7 +1085,7 @@ GameReset subroutine
 ; Scoreboard digits bitmap
 ; ------------------------
 
-; Credit to 8BitWorkshop
+; Credit to 8BitWorkshop, Steven Hugg
 ; Bitmap pattern for digits
 DigitsBitmap ;;{w:8,h:5,count:10,brev:1};;
         .byte $EE,$AA,$AA,$AA,$EE
