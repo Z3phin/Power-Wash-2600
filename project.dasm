@@ -10,7 +10,7 @@
         seg.u Variables
 	org $80
 
-Temp		word	; Temp variable, used for variety of purposees
+Temp		byte	; Temp variable, used for variety of purposees
 DirtHeightCounter byte
 
 RandomNum	byte
@@ -18,6 +18,10 @@ RandomNum	byte
 RowCleaned	byte
 
 FrameCounter 	byte
+
+Area		byte
+AreaBKCol	byte
+AreaDirtCol	byte
 
 ; Scores 
 Score0		byte	; Player 0 score
@@ -51,6 +55,9 @@ ColourPtr1	word
 SpritePtr0	word
 SpritePtr1	word
 
+BKColourPtr	word
+DirtColourPtr	word
+
 
 ; Score Font Buffer 2x5 array
 FontBuf 	ds 10
@@ -67,16 +74,10 @@ Player1Colour   equ $42
 
 WinFrames 	equ 180
 
-GameBKColour	equ #$ba
-
 DirtHeight	equ #4	; Height of each dirt spot in 2xScanlines
 NumDirtRows	equ #12	; Number of dirt rows 
 NDR		equ NumDirtRows
 DirtYStart	equ #32 
-
-
-BytesPerRow 	equ #6 	; Number of bytes (8 x 6 = 48 bits) PF0 only 4 bits
-DirtPerRow 	equ #40 	; Number of Dirt spots per row 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Code segment
@@ -91,36 +92,25 @@ DirtPerRow 	equ #40 	; Number of Dirt spots per row
 Start
 	CLEAN_START
         
-        
         ; Temporary setup of dirt
 	jsr LoadDirt
         		
         ; Setting Player Sprite Pointers 
         
-        lda #<Frame0
-        sta SpritePtr0
-        lda #>Frame0
-        sta SpritePtr0+1
-        
-        lda #<Frame0
-        sta SpritePtr1
-        lda #>Frame0
-        sta SpritePtr1+1
-        
-        lda #<ColourPlayer0
-        sta ColourPtr0
-        lda #>ColourPlayer0
-        sta ColourPtr0+1
-          
-        lda #<ColourPlayer1
-        sta ColourPtr1
-        lda #>ColourPlayer1
-        sta ColourPtr1+1
+        jsr SetUpPtrs
         
         lda #WinFrames
         sta WinFrameCounter
         
-        lda #GameBKColour
+        lda #0
+        sta Area
+        
+        lda #$54
+        sta AreaDirtCol
+        lda #$ba
+        sta AreaBKCol
+        
+        lda AreaBKCol
         sta BKColour
         
         ; Intitial Scores and missile positions
@@ -128,9 +118,13 @@ Start
         sta Score0
         sta Score1
         
+        
+        
         ; Set Missiles off? 
         sta MissileVel0
         sta MissileVel1
+        
+        
         
         ; Set Reticles to centre
         lda #20
@@ -277,15 +271,16 @@ StoreColour1
 	
         TIMER_SETUP 192
         jsr DrawScoreboard
-        ldy #8
+        ldy #7
 .buffer 
         sta WSYNC
         dey
         bne .buffer
         
-        ; Set Background to green? blue?
         lda BKColour
         sta COLUBK
+        lda AreaDirtCol
+        sta COLUPF
                 
         lda #0
         sta GRP0
@@ -294,13 +289,12 @@ StoreColour1
         sta COLUP0
         lda MissileColour1
         sta COLUP1
+        
+        sta WSYNC
                 
         ; PLAYFIELD GRAPHICS LOOP
         ; ------------------
         
-        lda #$54
-        sta COLUPF
-	
         ; Y contains the dirt row we are on.
         ; X contains the scanline we are on.
         
@@ -484,10 +478,9 @@ NoStream1
         
         
         jsr TestAllClean
-        bmi .nowin
-        
+        bmi .noWin
         jsr GameWin
-.nowin
+.noWin
         
         ; Read Button Input for next frame
         lda INPT4
@@ -747,20 +740,6 @@ LoadDirt subroutine
 .return
         rts
         
-        
-	clc
-        ldx #0
-        
-        
-        lda #$FF	; TEMPORARY
-.SetupLoop
-        sta Dirt,x
-        ;txa ; (un)comment for a 'random' looking pattern
-        inx
-        cpx #BytesPerRow*NumDirtRows
-        bne .SetupLoop
-        rts
-        
 LoadFull
 	ldx #$FF	; TEMPORARY
 .FullLoop
@@ -1009,7 +988,7 @@ GameReset subroutine
 	lda #WinFrames
         sta WinFrameCounter
         
-        lda #GameBKColour
+        lda AreaBKCol
         sta BKColour
         
         ; Intitial Scores and missile positions
@@ -1040,15 +1019,15 @@ GameReset subroutine
 	
 	rts
         
-GameWin subroutine 
-	
+GameWin subroutine
+
 	lda WinFrameCounter
         ror
         ror
         ror
         ror
         bcs .PlayerBK
-        lda #GameBKColour
+        lda AreaBKCol
         sta BKColour
         jmp .EndChangeColour
 .PlayerBK        
@@ -1068,15 +1047,82 @@ GameWin subroutine
         dec WinFrameCounter
         bne .noreset
         
+        inc Area
+        lda Area
+        cmp #4
+        bne .noResetArea
+        lda #0
+        sta Area
+.noResetArea
+	lda Area
+        tax
+        lda (DirtColourPtr),x
+        sta AreaDirtCol
+        lda (BKColourPtr),x
+        sta AreaBKCol
+        
         jsr GameReset
         jsr LoadDirt
         
 .noreset 
 	rts
+        
+        
+SetUpPtrs subroutine
+	lda #<Frame0
+        sta SpritePtr0
+        lda #>Frame0
+        sta SpritePtr0+1
+        
+        lda #<Frame0
+        sta SpritePtr1
+        lda #>Frame0
+        sta SpritePtr1+1
+        
+        lda #<ColourPlayer0
+        sta ColourPtr0
+        lda #>ColourPlayer0
+        sta ColourPtr0+1
+          
+        lda #<ColourPlayer1
+        sta ColourPtr1
+        lda #>ColourPlayer1
+        sta ColourPtr1+1
+        
+        lda #<BackgroundColours
+        sta BKColourPtr
+        lda #>BackgroundColours
+        sta BKColourPtr+1
+        
+        lda #<DirtColours
+        sta DirtColourPtr
+        lda #>DirtColours
+        sta DirtColourPtr+1
+        
+        rts
+        
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;		    Background and Dirt Colours
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+        
+        org $FE00
+        
+BackgroundColours
+	.byte #$ba
+        .byte #$1a
+        .byte #$61
+        .byte #$ff
+        
+DirtColours
+	.byte #$54
+        .byte #$a0
+        .byte #$1e
+        .byte #$d0
 	
 
 	org $FF00
-
+        
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;			     BITMAPS
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1230,7 +1276,7 @@ ColourPlayer1
 ;---End Color Data---
 
 
-
+; Credit to Steven Hugg
 ; Playfield bitmasks for all 40 dirt columns
 PFMaskTable
 	REPEAT 2
