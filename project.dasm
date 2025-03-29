@@ -13,6 +13,8 @@
 Temp		word	; Temp variable, used for variety of purposees
 DirtHeightCounter byte
 
+RowCleaned	byte
+
 ; Scores 
 Score0		byte	; Player 0 score
 Score1		byte    ; Player 1 score
@@ -53,7 +55,7 @@ SpritePtr	word
 FontBuf 	ds 10
 
 ; Dirt 
-Dirt		ds 72 	; 6x12 bytes (Dirt map)
+Dirt		ds 78	; 6x12 bytes (Dirt map)
 
  
 ; Constants 
@@ -67,7 +69,7 @@ WinFrames 	equ 180
 GameBKColour	equ #$ba
 
 DirtHeight	equ #4	; Height of each dirt spot in 2xScanlines
-NumDirtRows	equ #12	; Number of dirt rows 
+NumDirtRows	equ #13	; Number of dirt rows 
 NDR		equ NumDirtRows
 DirtYStart	equ #32 
 
@@ -553,10 +555,11 @@ MissileCollision subroutine
         jsr CleanDirt
         bmi .nocollision2
         
-        
         pla
 	tax		; Load the player we are looking at into the X register		
 
+	lda RowCleaned
+        bne .NoAddScore
 	; Add to the player score if there was a collision
 	clc
         sed
@@ -564,26 +567,7 @@ MissileCollision subroutine
         adc #1	
         sta Score0,x
         cld
-        
-        txa
-        asl	; multiply x by two because we are working with a word 
-        tax
-        clc
-        lda NumDirtP0,x
-        adc #1
-        sta NumDirtP0,x
-        lda NumDirtP0+1,x
-        adc #0	; Possibly add the carry bit only
-        sta NumDirtP0+1,x
-        
-        ;CLC
-        ;LDA NUM
-        ;ADC RESULT
-        ;STA RESULT
-        ;LDA NUM+1
-        ;ADC RESULT+1
-        ;STA RESULT+1
-        
+.NoAddScore
         jmp .nocollision
         
 .nocollision2
@@ -686,82 +670,7 @@ GetBCDBitmap subroutine
         dec Temp
         bne .loop2
         rts
-        
-; x contains which player we are looking at        
-CalculatePercentage subroutine
-	; (NumDirtP0,2x) * 100 / NumDirtBlocks
-	; First need to multiply x by 100 = 100x = 4( 4(4x + 2x) + x) = 
-        
-        txa
-        asl
-        tax
-        
-        ; Start Multiplication by 100
-        lda NumDirtP0,x
-        sta CalcBuffer
-        lda NumDirtP0+1,x
-        sta CalcBuffer+1 	; load NumDirtP0 into CalcBuffer
-        
-        asl
-        rol			; CalcBuffer = 2*NumDirtP0,2x
-        asl
-        rol			; CalcBuffer = 4*NumDirtP0,2x
-        
-        clc
-        lda NumDirtP0,x
-        adc CalcBuffer
-        sta CalcBuffer
-        lda NumDirtP0+1,x
-        adc CalcBuffer+1
-        sta CalcBuffer+1	; CalcBuffer = 5*NumDirtP0,2x
-        asl CalcBuffer
-        rol CalcBuffer+1	; CalcBuffer = 10*NumDirtP0,2x
-        
-        lda CalcBuffer
-        sta Temp
-        lda CalcBuffer+1
-        sta Temp+1		; Temp = 10*NumDirtP0,2x	
-        
-        
-        asl CalcBuffer	
-        rol CalcBuffer+1	; CalcBuffer = 20*NumDirtP0,2x
-        asl CalcBuffer
-        rol CalcBuffer+1	; CalcBuffer = 40*NumDirtP0,2x
-        
-        clc
-        lda Temp
-        adc CalcBuffer
-        sta CalcBuffer
-        lda Temp+1
-        adc CalcBuffer+1
-        sta CalcBuffer+1	; CalcBuffer = 50*NumDirtP0,2x
-        
-        asl CalcBuffer
-        rol CalcBuffer+1	; CalcBuffer = 100*NumDirtP0,2x
-        ; End Multiplication by 100
-        
-        
-        
-        ;LDA NUM       ;Start with RESULT = NUM
-        ;STA RESULT
-        ;LDA NUM+1
-        ;STA RESULT+1
-        ;ASL RESULT
-        ;ROL RESULT+1  ;RESULT = 2*NUM
-        ;ASL RESULT
-        ;ROL RESULT+1  ;RESULT = 4*NUM
-        ;CLC
-        ;LDA NUM
-        ;ADC RESULT
-        ;STA RESULT
-        ;LDA NUM+1
-        ;ADC RESULT+1
-        ;STA RESULT+1  ;RESULT = 5*NUM
-        ;ASL RESULT
-        ;ROL RESULT+1  ;RESULT = 10*NUM
-        
-        
-        
+               
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;        
 ; 			Clean Dirt
 ;	     Originally created by Steven Hugg
@@ -804,6 +713,7 @@ DivideRowLoop
         cmp Dirt,y		; was there a change?
         beq NoBrickFound2	; no, so return -1 as result
         sta Dirt,y
+        sta RowCleaned
         pla		; return remainder as result
         rts
 NoBrickFound2
