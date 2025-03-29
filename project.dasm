@@ -17,6 +17,8 @@ RandomNum	byte
 
 RowCleaned	byte
 
+FrameCounter 	byte
+
 ; Scores 
 Score0		byte	; Player 0 score
 Score1		byte    ; Player 1 score
@@ -46,7 +48,9 @@ WinFrameCounter	byte
 ; Sprite Pointers
 ColourPtr0	word
 ColourPtr1	word
-SpritePtr	word
+SpritePtr0	word
+SpritePtr1	word
+
 
 ; Score Font Buffer 2x5 array
 FontBuf 	ds 10
@@ -94,9 +98,14 @@ Start
         ; Setting Player Sprite Pointers 
         
         lda #<Frame0
-        sta SpritePtr
+        sta SpritePtr0
         lda #>Frame0
-        sta SpritePtr+1
+        sta SpritePtr0+1
+        
+        lda #<Frame0
+        sta SpritePtr1
+        lda #>Frame0
+        sta SpritePtr1+1
         
         lda #<ColourPlayer0
         sta ColourPtr0
@@ -413,12 +422,12 @@ DrawSpriteLoop
         
         lda (ColourPtr0),y	; Colour for both lines
         sta ColP0		; A -> ColP0
-        lda (SpritePtr),y	; Bitmap for first line
+        lda (SpritePtr0),y	; Bitmap for first line
         sta GRP0		; A -> [GRP0] (delayed due to VDELP0)
         
         lda (ColourPtr1),y
         tax
-        lda (SpritePtr),y
+        lda (SpritePtr1),y
         tay
         
         lda ColP0 
@@ -515,6 +524,11 @@ NoStream1
         ; Read Movement Input
         jsr MoveJoystick0
         jsr MoveJoystick1
+        jsr AnimatePlayer0
+        jsr AnimatePlayer1
+        
+        
+        inc FrameCounter
         
         TIMER_WAIT
 ; total = 262 lines, go to next frame
@@ -919,6 +933,72 @@ MoveJoystick1 subroutine
         sty MissileY1   
         
 	rts
+
+AnimatePlayer0 subroutine
+        lda #$C0
+	and SWCHA
+        cmp #$C0
+        beq .idle
+        
+	lda FrameCounter
+        lsr
+        lsr
+        lsr
+        lsr
+       	
+        bcs .SetFrame2
+        
+        lda #<Frame1
+        sta SpritePtr0
+        lda #>Frame1
+        sta SpritePtr0+1
+        jmp .return
+.SetFrame2
+ 	lda #<Frame2
+        sta SpritePtr0
+        lda #>Frame2
+        sta SpritePtr0+1
+	jmp .return
+.idle
+	lda #<Frame0
+        sta SpritePtr0
+        lda #>Frame0
+        sta SpritePtr0+1
+.return   
+        rts
+        
+AnimatePlayer1 subroutine 
+        lda #$0C
+	and SWCHA
+        cmp #$0C
+        beq .idle
+        
+	lda FrameCounter
+        lsr
+        lsr
+        lsr
+        lsr
+       	
+        bcs .SetFrame2
+        
+        lda #<Frame1
+        sta SpritePtr1
+        lda #>Frame1
+        sta SpritePtr1+1
+        jmp .return
+.SetFrame2
+ 	lda #<Frame2
+        sta SpritePtr1
+        lda #>Frame2
+        sta SpritePtr1+1
+	jmp .return
+.idle
+	lda #<Frame0
+        sta SpritePtr1
+        lda #>Frame0
+        sta SpritePtr1+1
+.return   
+        rts
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; 		Set Horizontal Position
