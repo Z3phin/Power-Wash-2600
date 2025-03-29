@@ -68,9 +68,14 @@ Dirt		ds 72	; 6x12 bytes (Dirt map)
  
 ; Constants 
 SpriteHeight 	equ #21
-DefaultYPos	equ #0
+
 Player0Colour   equ $94
 Player1Colour   equ $42
+FloorCol	equ $04
+
+P0StartPos	equ #40
+P1StartPos	equ #112
+ReticleStart	equ #20
 
 WinFrames 	equ 180
 
@@ -78,6 +83,9 @@ DirtHeight	equ #4	; Height of each dirt spot in 2xScanlines
 NumDirtRows	equ #12	; Number of dirt rows 
 NDR		equ NumDirtRows
 DirtYStart	equ #32 
+
+NumAreas	equ 4
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Code segment
@@ -105,9 +113,11 @@ Start
         lda #0
         sta Area
         
-        lda #$54
+        tax
+        
+        lda (DirtColourPtr),x
         sta AreaDirtCol
-        lda #$ba
+        lda (BKColourPtr),x
         sta AreaBKCol
         
         lda AreaBKCol
@@ -124,21 +134,20 @@ Start
         sta MissileVel0
         sta MissileVel1
         
-        
-        
-        ; Set Reticles to centre
-        lda #20
+
+        ; Set Reticles to top
+        lda #ReticleStart
         sta MissileY0
         sta MissileY1
         
         ; Initial Player and missile X positions
         ; Player 0
-       	lda #40
+       	lda #P0StartPos
         sta XPos0
         sta MissileX0
         
         ; Player 1
-        lda #112
+        lda #P1StartPos
         sta XPos1
         sta MissileX1
         
@@ -440,7 +449,7 @@ DrawSpriteLoop
         
         bne DrawSpriteLoop
         
-        lda #$04
+        lda #FloorCol
         sta COLUBK
         
         ; TURN OFF PLAYER SPRITES 
@@ -1001,18 +1010,18 @@ GameReset subroutine
         sta MissileVel1
         
         ; Set Reticles to centre
-        lda #20
+        lda #ReticleStart
         sta MissileY0
         sta MissileY1
         
         ; Initial Player and missile X positions
         ; Player 0
-       	lda #40
+       	lda #P0StartPos
         sta XPos0
         sta MissileX0
         
         ; Player 1
-        lda #112
+        lda #P1StartPos
         sta XPos1
         sta MissileX1
 
@@ -1049,7 +1058,7 @@ GameWin subroutine
         
         inc Area
         lda Area
-        cmp #4
+        cmp #NumAreas
         bne .noResetArea
         lda #0
         sta Area
