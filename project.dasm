@@ -13,6 +13,8 @@
 Temp		byte	; Temp variable, used for variety of purposees
 DirtHeightCounter byte
 
+AVol0		byte
+
 RandomNum	byte
 
 RowCleaned	byte
@@ -63,7 +65,7 @@ DirtColourPtr	word
 FontBuf 	ds 10
 
 ; Dirt 
-Dirt		ds 72	; 6x12 bytes (Dirt map)
+Dirt		ds 72	; 6x12 bytes (Dirt map) ;119 bytes of memory
 
  
 ; Constants 
@@ -491,6 +493,8 @@ NoStream1
         jsr GameWin
 .noWin
         
+        jsr PlayAudio
+        
         ; Read Button Input for next frame
         lda INPT4
 	sta MissileVel0
@@ -541,7 +545,11 @@ MissileCollision subroutine
 
 	lda RowCleaned
         bne .NoAddScore
-	; Add to the player score if there was a collision
+        
+        lda #20
+        sta AVol0
+        
+	; Add to the player score if a PF was cleaned
 	clc
         sed
         lda Score0,x
@@ -1109,25 +1117,38 @@ SetUpPtrs subroutine
         sta DirtColourPtr+1
         
         rts
-        
+
+
+PlayAudio subroutine
+	ldx AVol0
+        beq NoAudio
+        dex		; decrement volume every frame
+	stx AUDV0	; store in volume hardware register
+        stx AVol0	; store in shadow register
+        lda #7
+        sta AUDC0	; shift counter mode 3 for weird bounce sound
+NoAudio
+	rts
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;		    Background and Dirt Colours
+;		 Area Background and Dirt Colours
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
         
         org $FE00
         
 BackgroundColours
-	.byte #$ba
-        .byte #$1a
-        .byte #$61
-        .byte #$ff
+	.byte #$ba ;0
+        .byte #$1a ;1
+        .byte #$61 ;2
+        .byte #$ff ;3
         
 DirtColours
-	.byte #$54
-        .byte #$a0
-        .byte #$1e
-        .byte #$d0
+	.byte #$54 ;0
+        .byte #$a0 ;1
+        .byte #$1e ;2
+        .byte #$d0 ;3
 	
 
 	org $FF00
