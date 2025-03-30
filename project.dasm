@@ -13,7 +13,7 @@
 Temp		byte	; Temp variable, used for variety of purposees
 DirtHeightCounter byte
 
-AVol0		byte
+SoundOn		word
 
 RandomNum	byte
 
@@ -56,10 +56,6 @@ ColourPtr0	word
 ColourPtr1	word
 SpritePtr0	word
 SpritePtr1	word
-
-BKColourPtr	word
-DirtColourPtr	word
-
 
 ; Score Font Buffer 2x5 array
 FontBuf 	ds 10
@@ -117,9 +113,9 @@ Start
         
         tax
         
-        lda (DirtColourPtr),x
+        lda DirtColours,x
         sta AreaDirtCol
-        lda (BKColourPtr),x
+        lda BackgroundColours,x
         sta AreaBKCol
         
         lda AreaBKCol
@@ -188,6 +184,9 @@ NextFrame
         
 ; 37 lines of underscan
 	TIMER_SETUP 37 
+        
+        jsr ProcessSound
+        
       
        	; Setup the scores ready for display  
         lda Score0
@@ -470,7 +469,7 @@ DrawSpriteLoop
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 	TIMER_SETUP 29
- 		
+         		
         ; Skip Collisions in Reticle Mode
         lda MissileVel0
         bmi NoStream0
@@ -493,14 +492,13 @@ NoStream1
         jsr GameWin
 .noWin
         
-        jsr PlayAudio
-        
         ; Read Button Input for next frame
         lda INPT4
 	sta MissileVel0
         
         lda INPT5
 	sta MissileVel1 
+        
         
         ; Read Movement Input
         jsr MoveJoystick0
@@ -545,9 +543,6 @@ MissileCollision subroutine
 
 	lda RowCleaned
         bne .NoAddScore
-        
-        lda #20
-        sta AVol0
         
 	; Add to the player score if a PF was cleaned
 	clc
@@ -1033,16 +1028,23 @@ GameReset subroutine
         sta XPos1
         sta MissileX1
 
-	
 	rts
         
 GameWin subroutine
 
+	lda SoundOn
+        bne .noplay
+	ldy #3
+        ldx #0
+        jsr PlaySound
+.noplay
+
 	lda WinFrameCounter
-        ror
-        ror
-        ror
-        ror
+        lsr
+        lsr
+        lsr
+        lsr
+        lsr
         bcs .PlayerBK
         lda AreaBKCol
         sta BKColour
@@ -1073,9 +1075,9 @@ GameWin subroutine
 .noResetArea
 	lda Area
         tax
-        lda (DirtColourPtr),x
+        lda DirtColours,x
         sta AreaDirtCol
-        lda (BKColourPtr),x
+        lda BackgroundColours,x
         sta AreaBKCol
         
         jsr GameReset
@@ -1106,31 +1108,35 @@ SetUpPtrs subroutine
         lda #>ColourPlayer1
         sta ColourPtr1+1
         
-        lda #<BackgroundColours
-        sta BKColourPtr
-        lda #>BackgroundColours
-        sta BKColourPtr+1
-        
-        lda #<DirtColours
-        sta DirtColourPtr
-        lda #>DirtColours
-        sta DirtColourPtr+1
-        
         rts
-
-
-PlayAudio subroutine
-	ldx AVol0
-        beq NoAudio
-        dex		; decrement volume every frame
-	stx AUDV0	; store in volume hardware register
-        stx AVol0	; store in shadow register
-        lda #7
-        sta AUDC0	; shift counter mode 3 for weird bounce sound
-NoAudio
+   
+; Credit to 8Blit - Atari 2600 Game Programming
+PlaySound subroutine 
+	lda SoundType,y
+        sta AUDC0,x
+        lda SoundVolume,y
+        sta AUDV0,x
+        lda SoundPitch,y
+        sta AUDC0,x
+        lda SoundLength,y
+        sta SoundOn,x
+        rts
+        
+ProcessSound subroutine
+	ldx #1
+.soundChnl
+	lda SoundOn,x
+        beq .soundDone
+        dec SoundOn,x
+        bne .soundContinue
+        lda #0
+        sta AUDV0,x
+.soundDone
+.soundContinue
+	dex
+        beq .soundChnl
 	rts
-
-
+        
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;		 Area Background and Dirt Colours
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1149,6 +1155,28 @@ DirtColours
         .byte #$a0 ;1
         .byte #$1e ;2
         .byte #$d0 ;3
+  
+; Credit to 8Blit - Atari 2600 Game Programming  
+SoundType
+	.byte $0C
+        .byte $02
+        .byte $06
+        .byte $06
+SoundVolume
+	.byte $02
+        .byte $06
+        .byte $04
+        .byte $04
+SoundPitch
+	.byte $0D
+        .byte $03
+        .byte $09
+        .byte $03
+SoundLength
+	.byte $01
+        .byte $08
+        .byte $03
+        .byte $03
 	
 
 	org $FF00
