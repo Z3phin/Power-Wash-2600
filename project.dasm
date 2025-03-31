@@ -187,7 +187,11 @@ NextFrame
         
         jsr ProcessSound
         
-      
+        jsr TestAllClean
+        bmi .noWin
+        jsr GameWin
+.noWin
+        
        	; Setup the scores ready for display  
         lda Score0
         ldx #0
@@ -268,7 +272,6 @@ StoreColour1
 	sta MissileColour1
         
         
-
         sta WSYNC
         sta HMOVE ; Apply horizontal offset 
        
@@ -473,12 +476,24 @@ DrawSpriteLoop
         ; Skip Collisions in Reticle Mode
         lda MissileVel0
         bmi NoStream0
+        
+        ldy #5
+        ldx #1
+        jsr PlaySound 
+        lda #0
+        
  	ldx #0
  	jsr MissileCollision
 NoStream0
         ; Skip Collisions in Reticle Mode
         lda MissileVel1
         bmi NoStream1
+        
+        ldy #5
+        ldx #1
+        jsr PlaySound  
+        lda #0
+        
         ldx #1
         jsr MissileCollision
 NoStream1 
@@ -486,19 +501,13 @@ NoStream1
 	; Clear Collisions
         sta CXCLR
         
-        jsr TestAllClean
-        bmi .noWin
-        jsr GameWin
-.noWin
-        
         ; Read Button Input for next frame
         lda INPT4
 	sta MissileVel0
         
         lda INPT5
 	sta MissileVel1 
-        
-        
+       
         ; Read Movement Input
         jsr MoveJoystick0
         jsr MoveJoystick1
@@ -542,6 +551,16 @@ MissileCollision subroutine
 
 	lda RowCleaned
         bne .NoAddScore
+        
+        txa 
+        pha
+        
+        ldy #3
+        ldx #0
+        jsr PlaySound
+        
+        pla
+        tax
         
 	; Add to the player score if a PF was cleaned
 	clc
@@ -744,12 +763,7 @@ LoadDirt subroutine
         bit SWCHB
         
         beq .full
-        lda SWCHB
-        bmi .random
         jsr LoadProcedural
-        jmp .return
-.random
-	jsr LoadRandom
         jmp .return
 .full
 	jsr LoadFull
@@ -1113,6 +1127,15 @@ GameReset subroutine
         sta Score0
         sta Score1
         
+        ; Set Missiles off? 
+        sta MissileVel0
+        sta MissileVel1
+        
+        ; Set Reticles to centre
+        lda #ReticleStart
+        sta MissileY0
+        sta MissileY1
+        
         ; Initial Player and missile X positions
         ; Player 0
        	lda #P0StartPos
@@ -1130,12 +1153,10 @@ GameWin subroutine
 
 	lda SoundOn
         bne .noplay
-	;ldy #3
-        ;ldx #0
-        ;jsr PlaySound
 .noplay
 
 	lda WinFrameCounter
+        lsr
         lsr
         lsr
         lsr
@@ -1213,7 +1234,7 @@ PlaySound subroutine
         lda SoundVolume,y
         sta AUDV0,x
         lda SoundPitch,y
-        sta AUDC0,x
+        sta AUDF0,x
         lda SoundLength,y
         sta SoundOn,x
         rts
@@ -1254,25 +1275,34 @@ DirtColours
   
 ; Credit to 8Blit - Atari 2600 Game Programming  
 SoundType
-	.byte $0C
-        .byte $02
-        .byte $06
-        .byte $06
+	.byte #$0C
+        .byte #$02
+        .byte #$06
+        .byte #$06
+        .byte #$08
+        .byte #3
 SoundVolume
-	.byte $02
-        .byte $06
-        .byte $04
-        .byte $04
+	.byte #$02
+        .byte #$06
+        .byte #$04
+        .byte #$04
+        .byte #$02
+        .byte #$01
+        
 SoundPitch
-	.byte $0D
-        .byte $03
-        .byte $09
-        .byte $03
+	.byte #$0D
+        .byte #$03
+        .byte #$09
+        .byte #$03
+        .byte #19
+        .byte #13
 SoundLength
-	.byte $01
-        .byte $08
-        .byte $03
-        .byte $03
+	.byte #$01
+        .byte #$08
+        .byte #$03
+        .byte #$03
+        .byte #4
+        .byte #4
 
 ProcData
 House
