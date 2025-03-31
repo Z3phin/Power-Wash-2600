@@ -744,7 +744,12 @@ LoadDirt subroutine
         bit SWCHB
         
         beq .full
+        lda SWCHB
+        bmi .random
         jsr LoadProcedural
+        jmp .return
+.random
+	jsr LoadRandom
         jmp .return
 .full
 	jsr LoadFull
@@ -806,7 +811,6 @@ LoadRandom
         rts
         
 LoadProcedural
- 	clc
 	inc RandomNum
 	ldx RandomNum
         lda DrawLoop,x
@@ -819,7 +823,6 @@ ProceduralLoop
         
         lda Temp
         and #$03 
-        
         jsr GetProcData
 	stx Dirt+NumDirtRows*1,y
         
@@ -863,11 +866,13 @@ GetProcData subroutine
         ldx ProcData+NumDirtRows*0,y
         jmp .load
 .next1
-     	sbc #1
+        sec
+     	sbc #$01
         bne .next2
         ldx ProcData+NumDirtRows*1,y
         jmp .load
 .next2	
+        sec
 	sbc #1
         bne .next3
 	ldx ProcData+NumDirtRows*2,y
@@ -886,11 +891,13 @@ GetHalfProcData subroutine
         ldx HalfProcData+NumDirtRows*0,y
         jmp .load
 .next1
+        sec
      	sbc #1
         bne .next2
         ldx HalfProcData+NumDirtRows*1,y
         jmp .load
 .next2	
+        sec
 	sbc #1
         bne .next3
 	ldx HalfProcData+NumDirtRows*2,y
@@ -1106,15 +1113,6 @@ GameReset subroutine
         sta Score0
         sta Score1
         
-        ; Set Missiles off? 
-        sta MissileVel0
-        sta MissileVel1
-        
-        ; Set Reticles to centre
-        lda #ReticleStart
-        sta MissileY0
-        sta MissileY1
-        
         ; Initial Player and missile X positions
         ; Player 0
        	lda #P0StartPos
@@ -1291,18 +1289,18 @@ House
         .byte #%01100110;--
         .byte #%01100110;--
 TwoStory
+        .byte #%01111100;--
+        .byte #%11111110;--
+        .byte #%10010010;--
+        .byte #%10010010;--
         .byte #%11111110;--
         .byte #%10010010;--
         .byte #%10010010;--
         .byte #%11111110;--
         .byte #%11111110;--
-        .byte #%10010010;--
-        .byte #%10010010;--
         .byte #%11111110;--
-        .byte #%11111110;--
-        .byte #%11000110;--
-        .byte #%11000110;--
-        .byte #%11000110;--
+        .byte #%11101110;--
+        .byte #%11101110;--
 Car
         .byte #%00000000;--
         .byte #%00000000;--
@@ -1356,11 +1354,11 @@ Bin
         .byte #%00000000;--
         .byte #%00000000;--
         .byte #%00000000;--
-        .byte #%10010000;--
-        .byte #%11110000;--
-        .byte #%11110000;--
-        .byte #%11110000;--
-        .byte #%11110000;--
+        .byte #%00000000;--
+        .byte #%00100000;--
+        .byte #%01110000;--
+        .byte #%01110000;--
+        .byte #%01110000;--
         
 House2
         .byte #%00000000;--
