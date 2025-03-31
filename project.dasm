@@ -486,7 +486,6 @@ NoStream1
 	; Clear Collisions
         sta CXCLR
         
-        
         jsr TestAllClean
         bmi .noWin
         jsr GameWin
@@ -745,7 +744,7 @@ LoadDirt subroutine
         bit SWCHB
         
         beq .full
-        jsr LoadRandom
+        jsr LoadProcedural
         jmp .return
 .full
 	jsr LoadFull
@@ -805,6 +804,105 @@ LoadRandom
         
         sty RandomNum
         rts
+        
+LoadProcedural
+ 	clc
+	inc RandomNum
+	ldx RandomNum
+        lda DrawLoop,x
+        sta Temp
+        
+        ldy #$FF
+ProceduralLoop
+        ;lda Start,x ; Random number
+        iny
+        
+        lda Temp
+        and #$03 
+        
+        jsr GetProcData
+	stx Dirt+NumDirtRows*1,y
+        
+        lda Temp
+        and #$0C
+        jsr GetProcData
+        stx Dirt+NumDirtRows*2,y
+
+	lda Temp
+        and #$30
+        jsr GetProcData
+       	stx Dirt+NumDirtRows*4,y
+        
+        lda Temp
+        and #$C0
+        
+        jsr GetProcData
+        stx Dirt+NumDirtRows*5,y
+        
+        lda Temp
+        and #$03 
+        
+        jsr GetHalfProcData
+	stx Dirt+NumDirtRows*0,y
+        
+        lda Temp
+        and #$C0
+        jsr GetHalfProcData
+        stx Dirt+NumDirtRows*3,y
+        
+      	cpy #NumDirtRows-1
+        bne ProceduralLoop
+        
+	rts
+
+; A contains ProcData index (0,1,2,3)
+; Y contains row index (0-11)
+; X will contain output
+GetProcData subroutine
+        bne .next1
+        ldx ProcData+NumDirtRows*0,y
+        jmp .load
+.next1
+     	sbc #1
+        bne .next2
+        ldx ProcData+NumDirtRows*1,y
+        jmp .load
+.next2	
+	sbc #1
+        bne .next3
+	ldx ProcData+NumDirtRows*2,y
+        jmp .load
+.next3
+      	ldx ProcData+NumDirtRows*3,y
+.load
+        
+        rts
+        
+; A contains ProcData index (0,1,2,3)
+; Y contains row index (0-11)
+; X will contain output
+GetHalfProcData subroutine
+        bne .next1
+        ldx HalfProcData+NumDirtRows*0,y
+        jmp .load
+.next1
+     	sbc #1
+        bne .next2
+        ldx HalfProcData+NumDirtRows*1,y
+        jmp .load
+.next2	
+	sbc #1
+        bne .next3
+	ldx HalfProcData+NumDirtRows*2,y
+        jmp .load
+.next3
+      	ldx HalfProcData+NumDirtRows*3,y
+.load
+        
+        rts
+	
+	
+    
 	
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;        
@@ -1034,9 +1132,9 @@ GameWin subroutine
 
 	lda SoundOn
         bne .noplay
-	ldy #3
-        ldx #0
-        jsr PlaySound
+	;ldy #3
+        ;ldx #0
+        ;jsr PlaySound
 .noplay
 
 	lda WinFrameCounter
@@ -1177,6 +1275,121 @@ SoundLength
         .byte $08
         .byte $03
         .byte $03
+
+ProcData
+House
+        .byte #%00011000;--
+        .byte #%00111100;--
+        .byte #%00111100;--
+        .byte #%01111110;--
+        .byte #%01111110;--
+        .byte #%01100110;--
+        .byte #%01100110;--
+        .byte #%01111110;--
+        .byte #%01111110;--
+        .byte #%01100110;--
+        .byte #%01100110;--
+        .byte #%01100110;--
+TwoStory
+        .byte #%11111110;--
+        .byte #%10010010;--
+        .byte #%10010010;--
+        .byte #%11111110;--
+        .byte #%11111110;--
+        .byte #%10010010;--
+        .byte #%10010010;--
+        .byte #%11111110;--
+        .byte #%11111110;--
+        .byte #%11000110;--
+        .byte #%11000110;--
+        .byte #%11000110;--
+Car
+        .byte #%00000000;--
+        .byte #%00000000;--
+        .byte #%00000000;--
+        .byte #%00000000;--
+        .byte #%00000000;--
+        .byte #%00000000;--
+        .byte #%00000000;--
+        .byte #%00111110;--
+        .byte #%00010010;--
+        .byte #%01111110;--
+        .byte #%01111110;--
+        .byte #%01100110;--      
+Office
+        .byte #%01111111;--
+        .byte #%01010101;--
+        .byte #%01111111;--
+        .byte #%01010101;--
+        .byte #%01111111;--
+        .byte #%01010101;--
+        .byte #%01111111;--
+        .byte #%01010101;--
+        .byte #%01111111;--
+        .byte #%01010101;--
+        .byte #%01111111;--
+        .byte #%01111101;--
+        
+        
+;---Graphics Data from PlayerPal 2600---
+
+HalfProcData
+SmallHouse
+        .byte #%10000000;--
+        .byte #%10000000;--
+        .byte #%11000000;--
+        .byte #%11100000;--
+        .byte #%11110000;--
+        .byte #%10010000;--
+        .byte #%10010000;--
+        .byte #%11110000;--
+        .byte #%11010000;--
+        .byte #%11010000;--
+        .byte #%11010000;--
+        .byte #%11110000;--
+        
+Bin
+        .byte #%00000000;--
+        .byte #%00000000;--
+        .byte #%00000000;--
+        .byte #%00000000;--
+        .byte #%00000000;--
+        .byte #%00000000;--
+        .byte #%00000000;--
+        .byte #%10010000;--
+        .byte #%11110000;--
+        .byte #%11110000;--
+        .byte #%11110000;--
+        .byte #%11110000;--
+        
+House2
+        .byte #%00000000;--
+        .byte #%00010000;--
+        .byte #%00010000;--
+        .byte #%00110000;--
+        .byte #%01110000;--
+        .byte #%01110000;--
+        .byte #%01010000;--
+        .byte #%01010000;--
+        .byte #%01010000;--
+        .byte #%01010000;--
+        .byte #%11110000;--
+        .byte #%11110000;--
+Flag
+        .byte #%00000000;--
+        .byte #%00100000;--
+        .byte #%01100000;--
+        .byte #%11100000;--
+        .byte #%11100000;--
+        .byte #%00100000;--
+        .byte #%00100000;--
+        .byte #%00100000;--
+        .byte #%00100000;--
+        .byte #%00100000;--
+        .byte #%00100000;--
+        .byte #%11110000;--
+;---End Graphics Data---
+
 	
 
 	org $FF00
