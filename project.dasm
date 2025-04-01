@@ -519,7 +519,7 @@ NoStream1
 .gamewon
 	lda #0
         sta AUDV1
-
+	
 	lda WinFrameCounter
         cmp #WinFrameCounter/3*2
         bcc .skipSound0
@@ -528,7 +528,7 @@ NoStream1
         jsr PlaySound
         jmp .endofsound
 .skipSound0
-	cmp #WinFrameCounter/3
+	cmp #WinFrameCounter/3+20
         bcc .skipSound1
         ldy #7
         ldx #1
@@ -1255,6 +1255,14 @@ SetUpPtrs subroutine
    
 ; Credit to 8Blit - Atari 2600 Game Programming
 PlaySound subroutine 
+	lda SWCHB
+        asl  
+        bmi .nomute
+        lda #0
+        sta AUDV0
+        sta AUDV1
+        jmp .return
+.nomute
 	lda SoundType,y
         sta AUDC0,x
         lda SoundVolume,y
@@ -1263,11 +1271,19 @@ PlaySound subroutine
         sta AUDF0,x
         lda SoundLength,y
         sta SoundOn,x
+.return
         rts
         
 ProcessSound subroutine
+	lda SWCHB
+        asl  
+        bmi .nomute
+        lda #0
+        sta AUDV0
+        sta AUDV1
+        jmp .return
+.nomute
 	
-
 	ldx #1
 .soundChnl
 	lda SoundOn,x
@@ -1280,6 +1296,7 @@ ProcessSound subroutine
 .soundContinue
 	dex
         beq .soundChnl
+.return
 	rts
         
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1311,7 +1328,7 @@ SoundType
         .byte #3
         .byte #12
         .byte #12
-        .byte #4
+        .byte #12
 SoundVolume
 	.byte #$02
         .byte #$06
@@ -1319,9 +1336,9 @@ SoundVolume
         .byte #$04
         .byte #$02
         .byte #$01
-        .byte #1
-        .byte #1
-        .byte #1
+        .byte #2
+        .byte #2
+        .byte #2
 SoundPitch
 	.byte #$0D
         .byte #$03
@@ -1330,8 +1347,8 @@ SoundPitch
         .byte #19
         .byte #13
         .byte #26
+        .byte #19
         .byte #15
-        .byte #31
 SoundLength
 	.byte #$01
         .byte #$08
@@ -1339,9 +1356,9 @@ SoundLength
         .byte #$03
         .byte #4
         .byte #4
-        .byte #50
-        .byte #50
-        .byte #50
+        .byte #4
+        .byte #4
+        .byte #4
 
 ProcData
 House
