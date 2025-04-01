@@ -788,11 +788,16 @@ LoadDirt subroutine
 	lda #%00001000
         bit SWCHB
         
-        beq .full
-        jsr LoadProcedural
+        bne .procedural
+        lda SWCHB
+        bmi .random
+        jsr LoadFull
         jmp .return
-.full
-	jsr LoadFull
+.random
+	jsr LoadRandom
+        jmp .return
+.procedural
+	jsr LoadProcedural
 .return
         rts
         
