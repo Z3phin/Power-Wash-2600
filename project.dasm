@@ -1266,6 +1266,8 @@ PlaySound subroutine
         rts
         
 ProcessSound subroutine
+	
+
 	ldx #1
 .soundChnl
 	lda SoundOn,x
@@ -1307,9 +1309,9 @@ SoundType
         .byte #$06
         .byte #$08
         .byte #3
-        .byte #1
-        .byte #1
-        .byte #1
+        .byte #12
+        .byte #12
+        .byte #4
 SoundVolume
 	.byte #$02
         .byte #$06
@@ -1327,9 +1329,9 @@ SoundPitch
         .byte #$03
         .byte #19
         .byte #13
-        .byte #8
-        .byte #5
-        .byte #6
+        .byte #26
+        .byte #15
+        .byte #31
 SoundLength
 	.byte #$01
         .byte #$08
@@ -1337,9 +1339,9 @@ SoundLength
         .byte #$03
         .byte #4
         .byte #4
-        .byte #8
-        .byte #8
-        .byte #8
+        .byte #50
+        .byte #50
+        .byte #50
 
 ProcData
 House
