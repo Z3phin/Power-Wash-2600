@@ -75,7 +75,7 @@ P0StartPos	equ #40
 P1StartPos	equ #112
 ReticleStart	equ #20
 
-WinFrames 	equ 180
+WinFrames 	equ #150
 
 DirtHeight	equ #4	; Height of each dirt spot in 2xScanlines
 NumDirtRows	equ #12	; Number of dirt rows 
@@ -186,11 +186,6 @@ NextFrame
 	TIMER_SETUP 37 
         
         jsr ProcessSound
-        
-        jsr TestAllClean
-        bmi .noWin
-        jsr GameWin
-.noWin
         
        	; Setup the scores ready for display  
         lda Score0
@@ -501,6 +496,12 @@ NoStream1
 	; Clear Collisions
         sta CXCLR
         
+        jsr TestAllClean
+        bmi .noWin
+        jmp .gamewon
+        
+.noWin
+        
         ; Read Button Input for next frame
         lda INPT4
 	sta MissileVel0
@@ -513,8 +514,33 @@ NoStream1
         jsr MoveJoystick1
         jsr AnimatePlayer0
         jsr AnimatePlayer1
+        jmp .next
         
-        
+.gamewon
+	lda #0
+        sta AUDV1
+
+	lda WinFrameCounter
+        cmp #WinFrameCounter/3*2
+        bcc .skipSound0
+        ldy #6
+        ldx #1
+        jsr PlaySound
+        jmp .endofsound
+.skipSound0
+	cmp #WinFrameCounter/3
+        bcc .skipSound1
+        ldy #7
+        ldx #1
+        jsr PlaySound
+        jmp .endofsound
+.skipSound1
+        ldy #8
+        ldx #1
+        jsr PlaySound
+.endofsound
+	jsr GameWin
+.next  
         inc FrameCounter
         
         TIMER_WAIT
@@ -771,7 +797,7 @@ LoadDirt subroutine
         rts
         
 LoadFull
-	ldx #$FF	; TEMPORARY
+	ldx #$FF	
 .FullLoop
 	inx
         lda #$F0
@@ -869,7 +895,7 @@ ProceduralLoop
         
       	cpy #NumDirtRows-1
         bne ProceduralLoop
-        
+       
 	rts
 
 ; A contains ProcData index (0,1,2,3)
@@ -1151,10 +1177,6 @@ GameReset subroutine
         
 GameWin subroutine
 
-	lda SoundOn
-        bne .noplay
-.noplay
-
 	lda WinFrameCounter
         lsr
         lsr
@@ -1183,7 +1205,13 @@ GameWin subroutine
         dec WinFrameCounter
         bne .noreset
         
-        inc Area
+        jsr NewRound
+        
+.noreset 
+	rts
+        
+NewRound subroutine
+	inc Area
         lda Area
         cmp #NumAreas
         bne .noResetArea
@@ -1198,10 +1226,8 @@ GameWin subroutine
         sta AreaBKCol
         
         jsr GameReset
-        jsr LoadDirt
-        
-.noreset 
-	rts
+        jsr LoadDirt	
+        rts
         
         
 SetUpPtrs subroutine
@@ -1281,6 +1307,9 @@ SoundType
         .byte #$06
         .byte #$08
         .byte #3
+        .byte #1
+        .byte #1
+        .byte #1
 SoundVolume
 	.byte #$02
         .byte #$06
@@ -1288,7 +1317,9 @@ SoundVolume
         .byte #$04
         .byte #$02
         .byte #$01
-        
+        .byte #1
+        .byte #1
+        .byte #1
 SoundPitch
 	.byte #$0D
         .byte #$03
@@ -1296,6 +1327,9 @@ SoundPitch
         .byte #$03
         .byte #19
         .byte #13
+        .byte #8
+        .byte #5
+        .byte #6
 SoundLength
 	.byte #$01
         .byte #$08
@@ -1303,6 +1337,9 @@ SoundLength
         .byte #$03
         .byte #4
         .byte #4
+        .byte #8
+        .byte #8
+        .byte #8
 
 ProcData
 House
