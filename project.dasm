@@ -132,7 +132,7 @@ Start
         sta Score1
         
         
-        
+        lda #%10000000
         ; Set Missiles off? 
         sta MissileVel0
         sta MissileVel1
@@ -905,7 +905,7 @@ LoadFull subroutine
         
         rts
         
-LoadRandom
+LoadRandom subroutine
 	ldx #$FF
         ldy RandomNum
 .randomLoop
@@ -940,7 +940,7 @@ LoadRandom
         sty RandomNum
         rts
         
-LoadProcedural
+LoadProcedural subroutine
 	inc RandomNum
 	ldx RandomNum
         lda DrawLoop,x
@@ -1264,6 +1264,7 @@ GameReset subroutine
         
         sta GameWon
         
+        lda #%10000000
         ; Set Missiles off? 
         sta MissileVel0
         sta MissileVel1
