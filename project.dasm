@@ -21,6 +21,8 @@ RowCleaned	byte
 
 FrameCounter 	byte
 
+GameWon		byte
+
 Area		byte
 AreaBKCol	byte
 AreaDirtCol	byte
@@ -99,7 +101,10 @@ Start
 	CLEAN_START
         
         ; Temporary setup of dirt
+        ldx #0
 	jsr LoadDirt
+        ldx #1
+        jsr LoadDirt
         		
         ; Setting Player Sprite Pointers 
         
@@ -467,53 +472,10 @@ DrawSpriteLoop
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 	TIMER_SETUP 29
-         		
-        ; Skip Collisions in Reticle Mode
-        lda MissileVel0
-        bmi NoStream0
         
-        ldy #5
-        ldx #1
-        jsr PlaySound 
-        lda #0
-        
- 	ldx #0
- 	jsr MissileCollision
-NoStream0
-        ; Skip Collisions in Reticle Mode
-        lda MissileVel1
-        bmi NoStream1
-        
-        ldy #5
-        ldx #1
-        jsr PlaySound  
-        lda #0
-        
-        ldx #1
-        jsr MissileCollision
-NoStream1 
-
-	; Clear Collisions
-        sta CXCLR
-        
-        jsr TestAllClean
-        bmi .noWin
-        jmp .gamewon
-        
-.noWin
-        
-        ; Read Button Input for next frame
-        lda INPT4
-	sta MissileVel0
-        
-        lda INPT5
-	sta MissileVel1 
-       
-        ; Read Movement Input
-        jsr MoveJoystick0
-        jsr MoveJoystick1
-        jsr AnimatePlayer0
-        jsr AnimatePlayer1
+        lda GameWon
+        bne .gamewon
+        jsr NormalOverscan
         jmp .next
         
 .gamewon
@@ -521,6 +483,24 @@ NoStream1
         sta AUDV1
 	
 	lda WinFrameCounter
+        bne .noReset
+        jsr NewRound
+        jmp .next
+.noReset
+        cmp #2
+        bne .noLoad
+        ldx #0
+        jsr LoadDirt
+        dec WinFrameCounter
+        jmp .next
+.noLoad 
+	cmp #1
+        bne .noLoad1
+        ldx #1
+        jsr LoadDirt
+        dec WinFrameCounter
+        jmp .next
+.noLoad1
         cmp #WinFrameCounter/3*2
         bcc .skipSound0
         ldy #6
@@ -550,6 +530,106 @@ NoStream1
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; 					Subroutines
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+NormalOverscan subroutine
+	lda MissileVel0
+        bmi .noStream0
+        
+        ldy #5
+        ldx #1
+        jsr PlaySound 
+        lda #0
+        
+ 	ldx #0
+ 	jsr MissileCollision
+.noStream0
+        ; Skip Collisions in Reticle Mode
+        lda MissileVel1
+        bmi .noStream1
+        
+        ldy #5
+        ldx #1
+        jsr PlaySound  
+        lda #0
+        
+        ldx #1
+        jsr MissileCollision
+.noStream1 
+
+	; Clear Collisions
+        sta CXCLR
+        
+        jsr TestAllClean
+        bmi .noWin
+        inc GameWon
+        jmp .gamewon
+        
+.noWin
+        
+        ; Read Button Input for next frame
+        lda INPT4
+	sta MissileVel0
+        
+        lda INPT5
+	sta MissileVel1 
+       
+        ; Read Movement Input
+        jsr MoveJoystick0
+        jsr MoveJoystick1
+        jsr AnimatePlayer0
+        jsr AnimatePlayer1
+.gamewon
+
+        rts
+        
+GameWin subroutine
+
+	lda WinFrameCounter
+        lsr
+        lsr
+        lsr
+        lsr
+        lsr
+        lsr
+        bcs .PlayerBK
+        lda AreaBKCol
+        sta BKColour
+        jmp .EndChangeColour
+.PlayerBK        
+        lda Score0
+        cmp Score1
+        bcc .Player1Win
+        bcs .Player0Win
+  	jmp .EndChangeColour
+.Player1Win
+        lda #Player1Colour-3
+        sta BKColour
+        jmp .EndChangeColour
+.Player0Win
+        lda #Player0Colour+3
+        sta BKColour
+.EndChangeColour
+        dec WinFrameCounter
+       	 
+	rts
+        
+NewRound subroutine
+	inc Area
+        lda Area
+        cmp #NumAreas
+        bne .noResetArea
+        lda #0
+        sta Area
+.noResetArea
+	lda Area
+        tax
+        lda DirtColours,x
+        sta AreaDirtCol
+        lda BackgroundColours,x
+        sta AreaBKCol
+        
+        jsr GameReset	
+        rts
 
 
 ; x - contains the player missile and player score to add to
@@ -797,7 +877,12 @@ LoadDirt subroutine
 	jsr LoadRandom
         jmp .return
 .procedural
+	cpx #0
+    	bne .secondProc
 	jsr LoadProcedural
+        jmp .return
+.secondProc
+	jsr LoadProcedural1
 .return
         rts
         
@@ -837,7 +922,7 @@ LoadRandom
         
         iny
         lda NextFrame,y
-        sta Dirt+NumDirtRows*1,x
+        sta Dirt+NumDirtRows,x
         iny
         lda NextFrame,y
         sta Dirt+NumDirtRows*2,x
@@ -862,97 +947,114 @@ LoadProcedural
         sta Temp
         
         ldy #$FF
-ProceduralLoop
+.ProceduralLoop
         iny
         
         lda Temp
         and #$03 
+        pha
+        tax
         jsr GetProcData
-	stx Dirt+NumDirtRows*1,y
+	sta Dirt+NumDirtRows,y
+        pla
+        tax
         jsr GetHalfProcData
-	stx Dirt+NumDirtRows*0,y
+	sta Dirt+NumDirtRows*0,y
         
         lda Temp
         and #$0C
         lsr
         lsr
+        tax
         jsr GetProcData
-        stx Dirt+NumDirtRows*2,y
+        sta Dirt+NumDirtRows*2,y
 
+      	cpy #NumDirtRows-1
+        bne .ProceduralLoop
+       
+	rts
+        
+LoadProcedural1 subroutine
+	ldx RandomNum
+        lda DrawLoop,x
+        sta Temp
+        
+        ldy #$FF
+.ProceduralLoop
+        iny
+        
 	lda Temp
         and #$30
         lsr
         lsr
         lsr
         lsr
+        tax
         jsr GetProcData
-       	stx Dirt+NumDirtRows*4,y
+       	sta Dirt+NumDirtRows*4,y
         
-        clc
         lda Temp
         and #$C0
         rol
         rol
         rol
+        pha
+        tax
         jsr GetProcData
-        stx Dirt+NumDirtRows*5,y
+        sta Dirt+NumDirtRows*5,y
+        pla
+        tax
         jsr GetHalfProcData
-        stx Dirt+NumDirtRows*3,y
+        sta Dirt+NumDirtRows*3,y
         
       	cpy #NumDirtRows-1
-        bne ProceduralLoop
+        bne .ProceduralLoop
        
 	rts
 
-; A contains ProcData index (0,1,2,3)
+
+; X contains ProcData index (0,1,2,3)
 ; Y contains row index (0-11)
-; X will contain output
+; A will contain output
 GetProcData subroutine
-	pha
         bne .next1
-        ldx ProcData+NumDirtRows*0,y
+        lda ProcData+NumDirtRows*0,y
         jmp .load
 .next1
-        sec
-     	sbc #$01
+        dex
         bne .next2
-        ldx ProcData+NumDirtRows*1,y
+        lda ProcData+NumDirtRows*1,y
         jmp .load
 .next2	
-        sec
-	sbc #1
+        dex
         bne .next3
-	ldx ProcData+NumDirtRows*2,y
+	lda ProcData+NumDirtRows*2,y
         jmp .load
 .next3
-      	ldx ProcData+NumDirtRows*3,y
-.load
-     	pla   
+      	lda ProcData+NumDirtRows*3,y
+.load   
         rts
         
-; A contains ProcData index (0,1,2,3)
+; X contains ProcData index (0,1,2,3)
 ; Y contains row index (0-11)
-; X will contain output
+; A will contain output
 GetHalfProcData subroutine
         bne .next1
-        ldx HalfProcData+NumDirtRows*0,y
+        lda HalfProcData+NumDirtRows*0,y
         jmp .load
 .next1
-        sec
-     	sbc #1
+        dex
         bne .next2
-        ldx HalfProcData+NumDirtRows*1,y
+        lda HalfProcData+NumDirtRows*1,y
         jmp .load
 .next2	
-        sec
-	sbc #1
+        dex
         bne .next3
-	ldx HalfProcData+NumDirtRows*2,y
+	lda HalfProcData+NumDirtRows*2,y
         jmp .load
 .next3
-      	ldx HalfProcData+NumDirtRows*3,y
-.load
-        
+      	lda HalfProcData+NumDirtRows*3,y
+.load    
         rts
 	
 	
@@ -1160,6 +1262,8 @@ GameReset subroutine
         sta Score0
         sta Score1
         
+        sta GameWon
+        
         ; Set Missiles off? 
         sta MissileVel0
         sta MissileVel1
@@ -1182,59 +1286,7 @@ GameReset subroutine
 
 	rts
         
-GameWin subroutine
 
-	lda WinFrameCounter
-        lsr
-        lsr
-        lsr
-        lsr
-        lsr
-        lsr
-        bcs .PlayerBK
-        lda AreaBKCol
-        sta BKColour
-        jmp .EndChangeColour
-.PlayerBK        
-        lda Score0
-        cmp Score1
-        bcc .Player1Win
-        bcs .Player0Win
-  	jmp .EndChangeColour
-.Player1Win
-        lda #Player1Colour-3
-        sta BKColour
-        jmp .EndChangeColour
-.Player0Win
-        lda #Player0Colour+3
-        sta BKColour
-.EndChangeColour
-        dec WinFrameCounter
-        bne .noreset
-        
-        jsr NewRound
-        
-.noreset 
-	rts
-        
-NewRound subroutine
-	inc Area
-        lda Area
-        cmp #NumAreas
-        bne .noResetArea
-        lda #0
-        sta Area
-.noResetArea
-	lda Area
-        tax
-        lda DirtColours,x
-        sta AreaDirtCol
-        lda BackgroundColours,x
-        sta AreaBKCol
-        
-        jsr GameReset
-        jsr LoadDirt	
-        rts
         
         
 SetUpPtrs subroutine
