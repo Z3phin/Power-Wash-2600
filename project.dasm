@@ -801,7 +801,7 @@ LoadDirt subroutine
 .return
         rts
         
-LoadFull
+LoadFull subroutine
 	ldx #$FF	
 .FullLoop
 	inx
@@ -863,38 +863,39 @@ LoadProcedural
         
         ldy #$FF
 ProceduralLoop
-        ;lda Start,x ; Random number
         iny
         
         lda Temp
         and #$03 
         jsr GetProcData
 	stx Dirt+NumDirtRows*1,y
+        jsr GetHalfProcData
+	stx Dirt+NumDirtRows*0,y
         
         lda Temp
         and #$0C
+        lsr
+        lsr
         jsr GetProcData
         stx Dirt+NumDirtRows*2,y
 
 	lda Temp
         and #$30
+        lsr
+        lsr
+        lsr
+        lsr
         jsr GetProcData
        	stx Dirt+NumDirtRows*4,y
         
+        clc
         lda Temp
         and #$C0
-        
+        rol
+        rol
+        rol
         jsr GetProcData
         stx Dirt+NumDirtRows*5,y
-        
-        lda Temp
-        and #$03 
-        
-        jsr GetHalfProcData
-	stx Dirt+NumDirtRows*0,y
-        
-        lda Temp
-        and #$C0
         jsr GetHalfProcData
         stx Dirt+NumDirtRows*3,y
         
@@ -907,6 +908,7 @@ ProceduralLoop
 ; Y contains row index (0-11)
 ; X will contain output
 GetProcData subroutine
+	pha
         bne .next1
         ldx ProcData+NumDirtRows*0,y
         jmp .load
@@ -925,7 +927,7 @@ GetProcData subroutine
 .next3
       	ldx ProcData+NumDirtRows*3,y
 .load
-        
+     	pla   
         rts
         
 ; A contains ProcData index (0,1,2,3)
