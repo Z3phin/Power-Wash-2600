@@ -10,6 +10,15 @@ In this case, it is an adaption of Power Wash Simulator to the Atari VCS/2600 co
 Coded in 6502 assembly, the game combines many of the learnings from segments in the book "Making Games for the Atari 2600" by Steven Hugg. 
 Much of the code as been originally taken from this book and altered to suit the specification of this project. 
 
+Being my first game for the console, there are many things that can be surely be improved. Despite this, given 
+the time given to learn all about Atari 2600 development and create a new game in both completely unfamiliar and hard language and conle, 
+I am immensely proud of what I have accomplished. 
+
+I hope this game inspires more people to create and explore new games for the Atari 2600 and other retro consoles. 
+Above all, I hope you enjoy playing the game as much as I had making it (despite the pain of working in Assembly).
+
+Thanks for checking the game out!
+
 ## Running the Game
 
 ### Assembling 
@@ -79,7 +88,17 @@ The game contains some flashing colours and images which may affect some players
 
 ## Extra Info
 
-The final version of the project submitted and showcased at Swansea University.
+### Known Bugs or Issues:
+
+* There is an issue where some of the blocks of dirt will detect a collision at certain points on the screen. This issue is not game-breaking. Simply moving the Power Wash up a little bit should resolve the issue.
+
+### Future Plans and Features:
+
+Further work on this game is not guaranteed although there are several things I would like to add or improve should I return:
+
+* Add a title screen
+* Make use of the Ball Sprite to possibly create some kind of power up.
+* Improve code flow and readability.
 
 
 
