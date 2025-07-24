@@ -4,34 +4,49 @@
 
 Power Wash 2600 is a fan adaptation of the satisfying Power Wash Simulator originally by FuturLab and Square Enix for the Atari 2600 console. 
 
-This project is part of my Year 3 Dissertation project at Swansea University, which hoped to adapt a modern game to an 8-bit console. 
-In this case, it is an adaption of Power Wash Simulator to the Atari VCS/2600 console. 
+Originally, this project was submitted for my Year 3 Dissertation Project as part of the Sofware Engineering course at Swansea University. Inpsired by "Halo 2600" by Ed Fries, the project,  
+entitled "Ninth Gen to Second Gen: Adapting a Modern Game to 8-bit", details the development of adapting a more modern game, Power Wash Simulator, by someone who was vaguely familier with the existence of the Atari VCS/2600 system, all the way producing a reasonably competent game. 
 
-Coded in 6502 assembly, the game combines many of the learnings from segments in the book "Making Games for the Atari 2600" by Steven Hugg. 
-Much of the code as been originally taken from this book and altered to suit the specification of this project. 
+The paper went deeper into understanding the limited hardware architecture fully, learning (and crying) about 6502 Assembly programming, and navigating the many strange quirks of the system that meant I needed to "Race the Beam". Beyond the paper, it is possibly one of the most important projects I have done personally, pushing all the various skills needed as a programmer, including delving into unfamiliar systems and languages, reading documentation and experimentation, as well as patience. Even though it was one of the hardest projects I have worked on, it is also one of the most rewarding. 
 
-Being my first game for the console, there are many things that can be surely be improved. Despite this, given 
-the time given to learn all about Atari 2600 development and create a new game in both completely unfamiliar and hard language and conle, 
-I am immensely proud of what I have accomplished. 
+As a consequence of being my first game for the system, the game does indeed have many limitations. Despite that, I am immensely proud of the result and I hope people have fun experiencing it! Hopefully, this project can inspire new people to create their own games for the system, to challenge their abilites to the fullest, and appreciate the console that went on to inspire so many of the epic games we see today!
 
-I hope this game inspires more people to create and explore new games for the Atari 2600 and other retro consoles. 
-Above all, I hope you enjoy playing the game as much as I had making it (despite the pain of working in Assembly).
+### Tools
 
-Thanks for checking the game out!
+**IDE** - 8BitWorkshopIDE by Steven Hugg
+
+**Language** - 6502 Assembly
+
+### Resources
+
+**"Racing the Beam"** by Ian Bogost and Nick Montfort: 
+
+Details the fascinating story Atari and the console's development, going in depth about several inspirational games that challenged the system to do amazing things. 
+
+**"Making Games for the Atari 2600"** by Steven Hugg
+
+Main learning resource for making the game, complete with code samples and examples of different game systems. Much of the code that made "Power Wash 2600" is originally from 
+this book, altered to suit the game as needed. It is a much recommended read for anyone interested in making games for the system.
+
+**Stella Programmer's Guide** 
+
+An invaluable resource for any Atari 2600 game developer, detailing all of the various chips, memory addresses and strange quirks of the original hardware.
 
 ## Running the Game
 
 ### Assembling 
 
-It is recommended that the game be assembled in the [8BitWorkshop IDE](https://8bitworkshop.com) by Steven Hugg. Go to 'Menu->Download->Download ROM Image' to generate a26 binary file. 
+It is recommended that the game be assembled in the [8BitWorkshop IDE](https://8bitworkshop.com) by Steven Hugg. Go to 'Menu->Download->Download ROM Image' to generate an `a26` binary file. 
 
-Alternatively, the [DASM Assembler](https://dasm-assembler.github.io) may be used to generate a binary locally. 
+Alternatively, the [DASM Assembler](https://dasm-assembler.github.io) may be used to generate a binary locally.
+
+Either way, the final ROM image can be played on the original system or through an emulator. 
 
 ### Physically
 
-It is recommended to play the game on a physical Atari 2600 or Atari 2600+ console with Joystick controllers for the intended experience. Understandably, this may not be accessible for most so emulators are available.
+For the intended play experience, it is recommended to play the game on a physical Atari 2600 or Atari 2600+ console with Joystick controllers. Understandably, this may not be accessible for most so emulators are available detailed in the Emulators section.
 
-To run the game on a physical console, a Harmony Cartridge is recommended or similar device. Using an Atari 2600+ and Harmony Cartridge, the Harmony Cartridge will need to be put into development mode to run properly. Simply insert the cartridge into the console and the game should load.
+To run the game on a physical console, a [Harmony Cartridge](https://harmony.atariage.com/Site/Harmony.html) is recommended or similar device. Using an Atari 2600+ and Harmony Cartridge, the Harmony Cartridge will need to be put into development mode to run properly. Simply insert the cartridge into the console and the game should load.
 
 ### Emulators
 
@@ -66,7 +81,7 @@ Hold the Joystick Button Down (Space) to fire the Power Washer. Releasing the bu
 
 ### Objective
 
-Clear away the dirt on screen by blasting it away with your Power Washer. Gain points by clearing rows of a building/vehicle (in Canvas and Random modes these are split into six segments made up 4-8-8-4-8-8 squares respectively).
+Clear away the dirt on screen by blasting it away with your Power Washer. Gain points by clearing rows of a building/vehicle (in Canvas and Random modes these are split into six segments made up 4-8-8-4-8-8 squares respectively). Be careful! Score is not added until the row is fully clean, your opponent might try to steal your points!
 
 The player with the Highest Score wins the round. 
 
@@ -86,19 +101,10 @@ After a round is won, a new round starts with new a procedurally generated selec
 
 The game contains some flashing colours and images which may affect some players.
 
-## Extra Info
+## Known Bugs or Issues:
 
-### Known Bugs or Issues:
+* There is a minor issue where collisions with dirt are not detected. To resolve the issue, simply move the Power Washer vertically by a small amount.
 
-* There is an issue where some of the blocks of dirt will detect a collision at certain points on the screen. This issue is not game-breaking. Simply moving the Power Wash up a little bit should resolve the issue.
-
-### Future Plans and Features:
-
-Further work on this game is not guaranteed although there are several things I would like to add or improve should I return:
-
-* Add a title screen
-* Make use of the Ball Sprite to possibly create some kind of power up.
-* Improve code flow and readability.
 
 
 
