@@ -1,5 +1,8 @@
 # Power Wash 2600
 
+![alt text](https://github.com/Z3phin/Power-Wash-2600/blob/main/img/area-1.jpg)
+
+
 ## About
 
 Power Wash 2600 is a fan adaptation of the satisfying Power Wash Simulator originally by FuturLab and Square Enix for the Atari 2600 console. 
