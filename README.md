@@ -16,23 +16,19 @@ As a consequence of being my first game for the system, the game does indeed hav
 
 ### Tools
 
-**IDE** - 8BitWorkshopIDE by Steven Hugg
-
-**Language** - 6502 Assembly
+* **IDE** - 8BitWorkshopIDE by Steven Hugg
+* **Language** - 6502 Assembly
 
 ### Resources
 
-**"Racing the Beam"** by Ian Bogost and Nick Montfort: 
-
+* **"Racing the Beam"** by Ian Bogost and Nick Montfort:   
 Details the fascinating story Atari and the console's development, going in depth about several inspirational games that challenged the system to do amazing things. 
 
-**"Making Games for the Atari 2600"** by Steven Hugg
-
+* **"Making Games for the Atari 2600"** by Steven Hugg  
 Main learning resource for making the game, complete with code samples and examples of different game systems. Much of the code that made "Power Wash 2600" is originally from 
 this book, altered to suit the game as needed. It is a much recommended read for anyone interested in making games for the system.
 
-**Stella Programmer's Guide** 
-
+* **Stella Programmer's Guide**   
 An invaluable resource for any Atari 2600 game developer, detailing all of the various chips, memory addresses and strange quirks of the original hardware.
 
 ## Running the Game
@@ -62,33 +58,26 @@ As a final alternative, the original source code can be copied into [8bitworksho
 ## How to Play:
 ### Controls:
 
-Preferably, Joystick Controllers are the intended experience, although the game is perfectly playable using a keyboard on an emulator.
+Preferably, Joystick Controllers are the intended experience, although the game is perfectly playable using a keyboard on an emulator (Phone controls are not recommeded as it will be single player only).
 
-- NOTE: Any controls for Keyboard presented are the common defaults. These may be edited in most emulators to suit your preference. Player 2 controls are commonly the arrow keys.
+- NOTE: Any controls for Keyboard presented are the common defaults (pictured is the Javatari defaults). These may be edited in most emulators to suit your preference.
 
-#### Moving the Power Washer
+![Javatari Controls](https://github.com/Z3phin/Power-Wash-2600/blob/main/img/controls.png)
 
-
-Move the Joystick UP (W) to move the power washer UP, and Joystick DOWN (S) to move it DOWN.
-
-#### Moving the Player
-
-Move the Joystick RIGHT (D) to move your player RIGHT, and Joystick LEFT (A) to move LEFT.
-
-Players are not able to move off the screen bounds.
-Players can move through each other. 
-
-#### Firing
-
-Hold the Joystick Button Down (Space) to fire the Power Washer. Releasing the button will turn the Power Washer off. 
-
+* Use UP and DOWN to move the Power Washer up and down respectively
+* Use RIGHT and LEFT to move the player left and right respectively
+  - Players are unable to move off the screen sides
+  - Players can pass through each other
+* Hold the FIRE button to fire the Power Washer. Releasing the button will turn the Power Washer off.
+* TURBO FIRE is a common additional control used to rapidly fire the FIRE button. This is NOT recommended for this game.
+ 
 ### Objective
 
-Clear away the dirt on screen by blasting it away with your Power Washer. Gain points by clearing rows of a building/vehicle (in Canvas and Random modes these are split into six segments made up 4-8-8-4-8-8 squares respectively). Be careful! Score is not added until the row is fully clean, your opponent might try to steal your points!
-
-The player with the Highest Score wins the round. 
-
-After a round is won, a new round starts with new a procedurally generated selection of objects to wash. 
+* Clear away the dirt on screen by blasting it away with your Power Washer. Gain points by clearing rows of a building/vehicle
+  - In Canvas and Random modes these are split into six segments made up 4-8-8-4-8-8 squares respectively.
+  - Be careful! Score is not added until the row is fully clean, your opponent might try to steal your points!
+* The player with the Highest Score wins the round. 
+* After a round is won, a new round starts with new a procedurally generated selection of objects to wash. 
 
 ## Features:
 
