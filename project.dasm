@@ -1,0 +1,1716 @@
+
+	processor 6502
+        include "vcs.h"
+        include "macro.h"
+        include "xmacro.h"
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Variables segment
+
+        seg.u Variables
+	org $80
+
+Temp		byte	; Temp variable, used for variety of purposees
+DirtHeightCounter byte
+
+SoundOn		word
+
+RandomNum	byte
+
+RowCleaned	byte
+
+FrameCounter 	byte
+
+GameWon		byte
+
+Area		byte
+AreaBKCol	byte
+AreaDirtCol	byte
+
+; Scores 
+Score0		byte	; Player 0 score
+Score1		byte    ; Player 1 score
+
+BKColour 	byte
+
+; Sprite Positions 
+XPos0		byte	
+XPos1		byte
+ColP0   	byte	; Player0 colour on given scanline
+ColP1		byte	; Player1 colour on given scanline
+
+; Missile Positions
+MissileY0	byte    
+MissileY1	byte
+MissileX0	byte
+MissileX1	byte
+
+MissileVel0	byte
+MissileVel1	byte
+
+MissileColour0  byte
+MissileColour1  byte
+
+WinFrameCounter	byte
+
+; Sprite Pointers
+ColourPtr0	word
+ColourPtr1	word
+SpritePtr0	word
+SpritePtr1	word
+
+; Score Font Buffer 2x5 array
+FontBuf 	ds 10
+
+; Dirt 
+Dirt		ds 72	; 6x12 bytes (Dirt map) ;119 bytes of memory
+
+ 
+; Constants 
+SPRITE_HEIGHT 	equ #21
+PLAYER_0_COLOUR equ $94
+PLAYER_1_COLOUR equ $42
+FLOOR_COLOUR	equ $04
+
+P0_START_POSITION	equ #40
+P1_START_POSITION	equ #112
+RETICLE_START	equ #70
+
+MAX_WIN_FRAMES 	equ #150
+
+DIRT_HEIGHT	equ #4	; Height of each dirt spot in 2xScanlines
+NUM_DIRT_ROWS	equ #12	; Number of dirt rows 
+NDR		equ NUM_DIRT_ROWS
+DIRT_Y_START	equ #32 
+
+NUM_AREAS	equ #4
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Code segment
+
+	seg Code
+        org $f000
+        
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;	              START
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+Start
+	CLEAN_START
+        
+        ; Temporary setup of dirt
+        ldx #0
+	jsr LoadDirt
+        ldx #1
+        jsr LoadDirt
+        		
+        ; Setting Player Sprite Pointers 
+        
+        jsr SetUpPtrs
+        
+        lda #MAX_WIN_FRAMES
+        sta WinFrameCounter
+        
+        lda #0
+        sta Area
+        
+        tax
+        
+        lda DirtColours,x
+        sta AreaDirtCol
+        lda BackgroundColours,x
+        sta AreaBKCol
+        
+        lda AreaBKCol
+        sta BKColour
+        
+        ; Intitial Scores and missile positions
+        lda #0
+        sta Score0
+        sta Score1
+        
+        
+        lda #%10000000
+        ; Set Missiles off? 
+        sta MissileVel0
+        sta MissileVel1
+        
+
+        ; Set Reticles to top
+        lda #RETICLE_START
+        sta MissileY0
+        sta MissileY1
+        
+        ; Initial Player and missile X positions
+        ; Player 0
+       	lda #P0_START_POSITION
+        sta XPos0
+        sta MissileX0
+        
+        ; Player 1
+        lda #P1_START_POSITION
+        sta XPos1
+        sta MissileX1
+        
+        ; Set delay for displaying P0 until GRP1 is set
+        lda #1
+        sta VDELP0	
+         
+        ; Set horizontal positions 
+        lda XPos0
+        ldx #0
+        jsr SetHorizPos
+        
+        lda XPos1
+        ldx #1
+        jsr SetHorizPos
+        
+        ldx #1
+        sta WSYNC
+        sta HMOVE
+
+NextFrame
+        lsr SWCHB	; test Game Reset switch
+        bcc Start	; reset?
+        
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;	         VERTICAL SYNC
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+        
+; 1 + 3 lines of VSYNC
+	VERTICAL_SYNC
+        
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;	         VERTICAL BLANK
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+        
+; 37 lines of underscan
+	TIMER_SETUP 37 
+        
+        jsr ProcessSound
+        
+       	; Setup the scores ready for display  
+        lda Score0
+        ldx #0
+        jsr GetBCDBitmap
+        lda Score1
+        ldx #5
+        jsr GetBCDBitmap
+          
+        ; Set the horizontal position of players
+        lda XPos0
+        ldx #0
+        jsr SetHorizPos
+        
+        lda XPos1
+        ldx #1
+        jsr SetHorizPos
+        
+        ; Offset the missile0 to the center of sprite0
+        lda XPos0
+        clc
+        adc #4	; Offset
+        ldx #2
+        jsr SetHorizPos
+        
+        ; Offset the missile1 to the center of sprite1
+        lda XPos1
+        clc
+        adc #4	; Offset
+        ldx #3
+        jsr SetHorizPos
+        
+	; Setup background colour and scoremode ready for scoreboard
+        lda #$00
+        sta COLUBK
+        
+        lda #0
+        sta CTRLPF	; Symmetry
+        
+        
+        ; Make the missile big if it is Reticle Mode for player 0
+        lda MissileVel0
+        bmi CursorSize0
+        lda #0
+        jmp StoreSize0
+CursorSize0
+	lda #%000011000
+StoreSize0
+	sta NUSIZ0
+
+	; Make the missile big if it is Reticle Mode for player 1
+        lda MissileVel1
+        bmi CursorSize1
+        lda #0
+        jmp StoreSize1
+CursorSize1
+	lda #%00011000
+StoreSize1
+	sta NUSIZ1
+        
+        ; Recolour missile for either Reticle Mode or Stream Mode
+        lda MissileVel0
+        bmi ReticleColour0
+        lda #$af 
+        jmp StoreColour0
+ReticleColour0
+	lda #PLAYER_0_COLOUR
+StoreColour0
+	sta MissileColour0
+        
+        ; Recolour missile for either Reticle Mode or Stream Mode
+        lda MissileVel1
+        bmi ReticleColour1
+        lda #$af 
+        jmp StoreColour1
+ReticleColour1
+	lda #PLAYER_1_COLOUR
+StoreColour1
+	sta MissileColour1
+        
+        
+        sta WSYNC
+        sta HMOVE ; Apply horizontal offset 
+       
+        TIMER_WAIT
+; 192 lines of frame
+        
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;	            DRAWING
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
+	
+        TIMER_SETUP 192
+        jsr DrawScoreboard
+        ldy #7
+.buffer 
+        sta WSYNC
+        dey
+        bne .buffer
+        
+        lda BKColour
+        sta COLUBK
+        lda AreaDirtCol
+        sta COLUPF
+                
+        lda #0
+        sta GRP0
+        sta GRP1
+        lda MissileColour0
+        sta COLUP0
+        lda MissileColour1
+        sta COLUP1
+        
+        sta WSYNC
+                
+        ; PLAYFIELD GRAPHICS LOOP
+        ; ------------------
+        
+        ; Y contains the dirt row we are on.
+        ; X contains the scanline we are on.
+        
+        ldy #$ff ; Start at -1 ; 
+        ldx #$ff
+DrawLoop
+        iny 			; Go to next brick row 
+        lda #DIRT_HEIGHT
+        sta DirtHeightCounter
+        cpy #NUM_DIRT_ROWS
+        bcs DoneDirtDraw
+        
+        
+.innerLoop
+	
+        ; Enable missiles
+        ; -------------------
+	
+	inx			; increment scanline counter
+        stx Temp
+        sta WSYNC
+        
+        lda #0			
+        sta PF0
+        sta PF1                        
+        sta PF2
+        
+        lda MissileVel0
+        bmi .DrawReticle0	
+        
+        lda MissileY0
+        cmp Temp		; If the scanline is more than the Missile Y, disable the missile				
+        bcc .EnableMissile0
+	jmp .DisableMissile0
+.DrawReticle0
+	lda MissileY0
+        cmp Temp		
+        beq .EnableMissile0		
+.DisableMissile0
+        lda #0
+        jmp .Finish0
+.EnableMissile0
+	lda #2
+.Finish0
+	sta ENAM0
+            
+                
+        lda MissileVel1
+        bmi .DrawReticle1
+        
+        lda MissileY1
+        cmp Temp		; If the scanline is more than the Missile Y, disable the missile				
+        bcc .EnableMissile1
+	jmp .DisableMissile1
+.DrawReticle1
+	lda MissileY1
+        cmp Temp		
+        beq .EnableMissile1		
+.DisableMissile1
+        lda #0
+        jmp .Finish1
+.EnableMissile1
+	lda #2
+.Finish1
+	sta ENAM1	
+        			              
+        cpx #DIRT_Y_START
+        bmi .innerLoop		
+                           	
+        
+        ; Next Scanline - draw playfield data - Originally by Steven Hugg
+        ; -----------------------------------
+        sta WSYNC
+        dec DirtHeightCounter	
+        
+        
+        ; HBLANK
+        lda Dirt+NUM_DIRT_ROWS*0,y ; 0+12*0,y
+        sta PF0
+        lda Dirt+NUM_DIRT_ROWS*1,y ; 0+12*1,y	 
+        sta PF1
+        lda Dirt+NUM_DIRT_ROWS*2,y
+        sta PF2			 ; 21 machine cycles - 1 off HBLANK
+      	; END HBLANK
+      	
+        inx			 ; Increment scanline counter	
+        			 ; timing
+       
+        lda Dirt+NUM_DIRT_ROWS*3,y
+        sta PF0
+        lda Dirt+NUM_DIRT_ROWS*4,y
+        sta PF1
+        lda Dirt+NUM_DIRT_ROWS*5,y
+        sta PF2			 ; 21 machine cycles 
+        			 ; TOTAL for PFx is 42 machine cycles. 76 - 42 machine cycles = 34	 
+        
+        lda DirtHeightCounter
+        bne .innerLoop
+        beq DrawLoop		 ; Total 55 machine cycles used here, 21 machine cycles free 
+
+DoneDirtDraw 
+	sta WSYNC
+        
+        ; Turn off missiles and playfield data
+  	lda #0
+        sta PF0
+        sta PF1
+        sta PF2
+        sta ENAM0
+        sta ENAM1
+        
+ ; DRAW PLAYER LOOP
+ ; ----------------
+        
+        lda #SPRITE_HEIGHT
+        sta Temp
+DrawSpriteLoop
+	ldy Temp
+        
+        lda (ColourPtr0),y	; Colour for both lines
+        sta ColP0		; A -> ColP0
+        lda (SpritePtr0),y	; Bitmap for first line
+        sta GRP0		; A -> [GRP0] (delayed due to VDELP0)
+        
+        lda (ColourPtr1),y
+        tax
+        lda (SpritePtr1),y
+        tay
+        
+        lda ColP0 
+        sta WSYNC
+        ; HBLANK
+        sty GRP1	;GRP0 also updated due to VDELP0
+        
+        ; Store the player colours
+        stx COLUP1
+        sta COLUP0
+        
+        dec Temp
+        
+        lda Temp 
+        sta WSYNC
+        
+        bne DrawSpriteLoop
+        
+        lda #FLOOR_COLOUR
+        sta COLUBK
+        
+        ; TURN OFF PLAYER SPRITES 
+        
+        lda #0
+        sta GRP0
+        sta GRP1
+     
+               
+        TIMER_WAIT
+
+; 29 lines of overscan
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;	            OVERSCAN
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+	TIMER_SETUP 29
+        
+        lda GameWon
+        bne .gamewon
+        jsr NormalOverscan
+        jmp .next
+        
+.gamewon
+	lda #0
+        sta AUDV1
+	
+	lda WinFrameCounter
+        bne .noReset
+        jsr NewRound
+        jmp .next
+.noReset
+        cmp #2
+        bne .noLoad
+        ldx #0
+        jsr LoadDirt
+        dec WinFrameCounter
+        jmp .next
+.noLoad 
+	cmp #1
+        bne .noLoad1
+        ldx #1
+        jsr LoadDirt
+        dec WinFrameCounter
+        jmp .next
+.noLoad1
+        cmp #100
+        bcc .skipSound0
+        ldy #6
+        ldx #1
+        jsr PlaySound
+        jmp .endofsound
+.skipSound0
+	cmp #70
+        bcc .skipSound1
+        ldy #7
+        ldx #1
+        jsr PlaySound
+        jmp .endofsound
+.skipSound1
+        ldy #8
+        ldx #1
+        jsr PlaySound
+.endofsound
+	jsr GameWin
+.next  
+        inc FrameCounter
+        
+        TIMER_WAIT
+; total = 262 lines, go to next frame
+        jmp NextFrame
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; 					Subroutines
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+NormalOverscan subroutine
+	lda MissileVel0
+        bmi .noStream0
+        
+        ldy #5
+        ldx #1
+        jsr PlaySound 
+        lda #0
+        
+ 	ldx #0
+ 	jsr MissileCollision
+.noStream0
+        ; Skip Collisions in Reticle Mode
+        lda MissileVel1
+        bmi .noStream1
+        
+        ldy #5
+        ldx #1
+        jsr PlaySound  
+        lda #0
+        
+        ldx #1
+        jsr MissileCollision
+.noStream1 
+
+	; Clear Collisions
+        sta CXCLR
+        
+        jsr TestAllClean
+        bmi .noWin
+        inc GameWon
+        jmp .gamewon
+        
+.noWin
+        
+        ; Read Button Input for next frame
+        lda INPT4
+	sta MissileVel0
+        
+        lda INPT5
+	sta MissileVel1 
+       
+        ; Read Movement Input
+        jsr MoveJoystick0
+        jsr MoveJoystick1
+        jsr AnimatePlayer0
+        jsr AnimatePlayer1
+.gamewon
+        rts
+        
+GameWin subroutine
+
+	lda WinFrameCounter
+        lsr
+        lsr
+        lsr
+        lsr
+        lsr
+        lsr
+        bcs .PlayerBK
+        lda AreaBKCol
+        sta BKColour
+        jmp .EndChangeColour
+.PlayerBK        
+        lda Score0
+        cmp Score1
+        bcc .Player1Win
+        bcs .Player0Win
+  	jmp .EndChangeColour
+.Player1Win
+        lda #PLAYER_1_COLOUR-3
+        sta BKColour
+        jmp .EndChangeColour
+.Player0Win
+        lda #PLAYER_0_COLOUR+3
+        sta BKColour
+.EndChangeColour
+        dec WinFrameCounter
+	rts
+        
+NewRound subroutine
+	inc Area
+        lda Area
+        cmp #NUM_AREAS
+        bne .noResetArea
+        lda #0
+        sta Area
+.noResetArea
+	lda Area
+        tax
+        lda DirtColours,x
+        sta AreaDirtCol
+        lda BackgroundColours,x
+        sta AreaBKCol
+        
+        jsr GameReset	
+        rts
+
+
+; x - contains the player missile and player score to add to
+MissileCollision subroutine
+	lda CXM0FB,x
+        sta Temp
+	lda #%11000000
+        bit Temp
+        beq .nocollision
+.collision
+
+	txa
+        tay		; Move the player we are looking at into the Y register
+        pha		; Save the contents of the X register
+        
+        lda MissileY0,y	; A contains missile Y coordinate  
+        ldx XPos0,y	; X contains missile X coordinate
+        
+        jsr CleanDirt
+        bmi .nocollision2
+        
+        pla
+	tax		; Load the player we are looking at into the X register		
+
+	lda RowCleaned
+        bne .NoAddScore
+        
+        txa 
+        pha
+        
+        ldy #3
+        ldx #0
+        jsr PlaySound
+        
+        pla
+        tax
+        
+	; Add to the player score if a PF was cleaned
+	clc
+        sed
+        lda Score0,x
+        adc #1	
+        sta Score0,x
+        cld
+.NoAddScore
+        jmp .nocollision
+        
+.nocollision2
+	pla
+        tax
+.nocollision
+	rts
+        ; end add one to score
+        
+
+; Scoreboard Subroutines
+; ----------------------
+; Credit to 8Bitworkshop (Steven Hugg)
+
+DrawScoreboard subroutine
+	; Put playfield into score mode
+        
+        lda #%00010010
+        sta CTRLPF
+        lda #$98   ; Slightly lighter colour than player0 sprite
+        sta COLUP0 ; left colour
+        lda #$46   ; Slightly lighter colour than player1 sprite		
+        sta COLUP1 ; right colour	
+        ; Draw digits
+        ldy #0
+ScanLoop1a
+        sta WSYNC ; 76
+        tya
+        lsr	   ; Divide Y by two for double-height lines 	
+        tax	   ; A -> X
+        lda FontBuf+0,x
+        sta PF1		; set left score bitmap	
+        SLEEP 28
+        lda FontBuf+5,x
+        sta PF1		; set right score bitmap
+        iny
+        cpy #10
+        bcc ScanLoop1a
+        
+        ; Clear playfield
+        lda #0
+        sta WSYNC
+        sta PF1
+        ; Turn playfield reflection off (and turn score mode off)
+        lda #%00000000
+        sta CTRLPF
+        rts
+
+        
+; GetBCDBitmap
+; Fetches the bitmap data for two digits of a
+; BCD-encoded number, storing it in addresses
+; FontBuf+x to FontBuf+4+x
+GetBCDBitmap subroutine 
+	; Fetch the bytes for the 1st digit
+        pha		; save original BCD number
+        and #$0F	; mask out the least significant number
+        sta Temp
+        asl 
+        asl
+        adc Temp 	; multiply by 5
+        tay		; A -> Y
+        lda #5
+        sta Temp	; count down from 5
+.loop1
+	lda DigitsBitmap,y
+        and #$0F	; mask out left most digit
+        sta FontBuf,x 
+        iny
+        inx
+        dec Temp
+        bne .loop1
+        
+        ; Second Digit 
+        
+	pla 		; restore original BCD number
+        lsr
+        lsr
+        lsr
+        lsr		;shift right by 4
+        sta Temp
+        asl 
+        asl
+        adc Temp	; multiply by 5
+        tay 		; A -> Y
+        dex
+        dex
+        dex
+        dex
+        dex
+        lda #5
+        sta Temp 	; count down from 5
+.loop2
+	lda DigitsBitmap,y
+        and #$F0	; make out rightmost digit
+        ora FontBuf,x	; combine left and right digts
+        sta FontBuf,x	; store combined digits
+        iny
+        inx
+        dec Temp
+        bne .loop2
+        rts
+               
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;        
+; 			Clean Dirt
+;	     Originally created by Steven Hugg
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;        
+
+
+; Subroutine to try to clear a bit of dirt at a given X-Y coordinate.
+; X contains the X coordinate.
+; A contains the Y coordinate.
+; On return, A = -1 if no dirt was present,
+; otherwise A = Y offset (0-brickheight-1) of dirt hit.
+CleanDirt
+        ldy #$ff
+        sec
+        sbc #DIRT_Y_START	; subtract top Y of dirt field
+; Divide by dirt height
+DivideRowLoop
+	iny
+        sbc #DIRT_HEIGHT*2	; #
+	bcs DivideRowLoop	; loop until < 0
+        cpy #NUM_DIRT_ROWS		; #
+        bcs NoBrickFound	
+; Now that we have the line, get byte and bit offset for brick
+	clc
+        adc #DIRT_HEIGHT*2	; #
+	pha	; save the remainder to return as result
+	txa
+        clc
+        adc #3	; adjust because SetHorizPos is off by a few pixels
+        lsr
+        lsr	; divide X coordinate by 4
+        tax	; transfer brick column to X
+        tya	; load brick row # in A
+        clc
+        adc PFOfsTable,x	; add offset
+        tay
+        lda PFMaskTable,x
+        eor #$ff
+        and Dirt,y
+        cmp Dirt,y		; was there a change?
+        beq NoBrickFound2	; no, so return -1 as result
+        sta Dirt,y
+        sta RowCleaned
+        pla		; return remainder as result
+        rts
+NoBrickFound2
+	pla		; pull the remainder, but ignore it
+NoBrickFound
+	lda #$FF	; return -1 as result
+        rts
+
+; Returns a negative number if not all clean 
+TestAllClean subroutine	
+	ldx #$FF
+.CheckRow
+	inx
+	lda Dirt+NUM_DIRT_ROWS*0,x
+        and #$F0
+        bne .NotClean
+        
+        lda Dirt+NUM_DIRT_ROWS*1,x
+        bne .NotClean
+        
+        lda Dirt+NUM_DIRT_ROWS*2,x
+        bne .NotClean
+        
+        lda Dirt+NUM_DIRT_ROWS*3,x
+        and #$F0
+        bne .NotClean
+        
+        lda Dirt+NUM_DIRT_ROWS*4,x
+        bne .NotClean
+        
+        lda Dirt+NUM_DIRT_ROWS*5,x
+        bne .NotClean
+        
+        cpx #NUM_DIRT_ROWS-1
+        bne .CheckRow
+        rts
+.NotClean
+	lda #$FF
+        rts
+        
+        
+                
+LoadDirt subroutine
+	lda #%00001000
+        bit SWCHB
+        
+        bne .procedural
+        lda SWCHB
+        bmi .random
+        jsr LoadFull
+        jmp .return
+.random
+	jsr LoadRandom
+        jmp .return
+.procedural
+	cpx #0
+    	bne .secondProc
+	jsr LoadProcedural
+        jmp .return
+.secondProc
+	jsr LoadProcedural1
+.return
+        rts
+        
+LoadFull subroutine
+	ldx #$FF	
+.FullLoop
+	inx
+        lda #$F0
+        sta Dirt+NUM_DIRT_ROWS*0,x
+        sta Dirt+NUM_DIRT_ROWS*3,x
+        
+        lda #$FF
+        sta Dirt+NUM_DIRT_ROWS*1,x
+        sta Dirt+NUM_DIRT_ROWS*2,x
+        sta Dirt+NUM_DIRT_ROWS*4,x
+        sta Dirt+NUM_DIRT_ROWS*5,x
+        
+        cpx #NUM_DIRT_ROWS-1
+        bne .FullLoop
+        
+        rts
+        
+LoadRandom subroutine
+	ldx #$FF
+        ldy RandomNum
+.randomLoop
+	inx
+	
+        lda NextFrame,y
+        and #$F0
+        sta Dirt+NUM_DIRT_ROWS*0,x
+        
+        iny
+        lda NextFrame,y
+        and #$F0
+        sta Dirt+NUM_DIRT_ROWS*3,x
+        
+        iny
+        lda NextFrame,y
+        sta Dirt+NUM_DIRT_ROWS,x
+        iny
+        lda NextFrame,y
+        sta Dirt+NUM_DIRT_ROWS*2,x
+        iny
+        lda NextFrame,y
+        sta Dirt+NUM_DIRT_ROWS*4,x
+        iny
+        lda NextFrame,y
+        sta Dirt+NUM_DIRT_ROWS*5,x
+        iny
+        
+        cpx #NUM_DIRT_ROWS-1
+        bne .randomLoop
+        
+        sty RandomNum
+        rts
+        
+LoadProcedural subroutine
+	inc RandomNum
+	ldx RandomNum
+        lda #%11000000 ;DrawLoop,x
+        sta Temp
+        
+        ldy #$FF
+.ProceduralLoop
+        iny
+        
+        lda Temp
+        and #$03 
+        pha
+        tax
+        jsr GetProcData
+	sta Dirt+NUM_DIRT_ROWS,y
+        pla
+        tax
+        jsr GetHalfProcData
+	sta Dirt+NUM_DIRT_ROWS*0,y
+        
+        lda Temp
+        and #$0C
+        lsr
+        lsr
+        tax
+        jsr GetProcData
+        sta Dirt+NUM_DIRT_ROWS*2,y
+
+      	cpy #NUM_DIRT_ROWS-1
+        bne .ProceduralLoop
+       
+	rts
+        
+LoadProcedural1 subroutine
+	ldx RandomNum
+        lda #%11000000 ;DrawLoop,x
+        sta Temp
+        
+        ldy #$FF
+.ProceduralLoop
+        iny
+        
+	lda Temp
+        and #$30
+        lsr
+        lsr
+        lsr
+        lsr
+        tax
+        jsr GetProcData
+       	sta Dirt+NUM_DIRT_ROWS*4,y
+        
+        lda Temp
+        and #$C0
+        rol
+        rol
+        rol
+        pha
+        tax
+        jsr GetProcData
+        sta Dirt+NUM_DIRT_ROWS*5,y
+        pla
+        tax
+        jsr GetHalfProcData
+        sta Dirt+NUM_DIRT_ROWS*3,y
+        
+      	cpy #NUM_DIRT_ROWS-1
+        bne .ProceduralLoop
+       
+	rts
+
+
+; X contains ProcData index (0,1,2,3)
+; Y contains row index (0-11)
+; A will contain output
+GetProcData subroutine
+        bne .next1
+        lda ProcData+NUM_DIRT_ROWS*0,y
+        jmp .load
+.next1
+        dex
+        bne .next2
+        lda ProcData+NUM_DIRT_ROWS*1,y
+        jmp .load
+.next2	
+        dex
+        bne .next3
+	lda ProcData+NUM_DIRT_ROWS*2,y
+        jmp .load
+.next3
+      	lda ProcData+NUM_DIRT_ROWS*3,y
+.load   
+        rts
+        
+; X contains ProcData index (0,1,2,3)
+; Y contains row index (0-11)
+; A will contain output
+GetHalfProcData subroutine
+        bne .next1
+        lda HalfProcData+NUM_DIRT_ROWS*0,y
+        jmp .load
+.next1
+        dex
+        bne .next2
+        lda HalfProcData+NUM_DIRT_ROWS*1,y
+        jmp .load
+.next2	
+        dex
+        bne .next3
+	lda HalfProcData+NUM_DIRT_ROWS*2,y
+        jmp .load
+.next3
+      	lda HalfProcData+NUM_DIRT_ROWS*3,y
+.load    
+        rts
+	
+	
+    
+	
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;        
+; 		Joystick Input Subroutines 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+; Player 0 Movement
+; ----------------
+
+; Read joystick movement and apply to object 0
+MoveJoystick0 subroutine
+; Move horizontally
+        ldx XPos0
+	lda #%01000000	;Left?
+	bit SWCHA
+	bne .SkipMoveLeft
+        cpx #1
+        bcc .SkipMoveLeft
+        dex
+.SkipMoveLeft
+	lda #%10000000	;Right?
+	bit SWCHA 
+	bne .SkipMoveRight
+        cpx #153
+        bcs .SkipMoveRight
+        inx
+.SkipMoveRight
+	stx XPos0
+; Move Vertically
+	ldy MissileY0
+        lda #%00010000	;Up?
+        bit SWCHA
+        bne .SkipMoveUp
+        cpy #1
+        bcc .SkipMoveUp
+        dey
+        dey
+.SkipMoveUp
+        lda #%00100000	;down?
+        bit SWCHA
+        bne .SkipMoveDown
+        cpy #DIRT_Y_START+DIRT_HEIGHT*2*NUM_DIRT_ROWS
+        bcs .SkipMoveDown
+        iny
+        iny
+.SkipMoveDown
+        sty MissileY0  
+        
+	rts    
+    
+        
+; Player 1 Movement
+; ----------------
+        
+MoveJoystick1 subroutine 
+; Move horizontally
+        ldx XPos1
+	lda #$04	;Left?
+	bit SWCHA
+	bne .SkipMoveLeft
+        cpx #1		; Max Left
+        bcc .SkipMoveLeft
+        dex
+.SkipMoveLeft
+	lda #$08	;Right?
+	bit SWCHA 
+	bne .SkipMoveRight
+        cpx #153	; Max Right
+        bcs .SkipMoveRight
+        inx
+.SkipMoveRight
+	stx XPos1
+        
+; Move Vertically
+	ldy MissileY1
+        lda #$01	;Up?
+        bit SWCHA
+        bne .SkipMoveUp
+        cpy #1
+        bcc .SkipMoveUp
+        dey
+        dey
+.SkipMoveUp
+        lda #$02	;down?
+        bit SWCHA
+        bne .SkipMoveDown
+        cpy #DIRT_Y_START+DIRT_HEIGHT*2*NUM_DIRT_ROWS
+        bcs .SkipMoveDown
+        iny
+        iny
+.SkipMoveDown
+        sty MissileY1   
+        
+	rts
+
+AnimatePlayer0 subroutine
+        lda #$C0
+	and SWCHA
+        cmp #$C0
+        beq .idle
+        
+	lda FrameCounter
+        lsr
+        lsr
+        lsr
+        lsr
+       	
+        bcs .SetFrame2
+        
+        lda #<Frame1
+        sta SpritePtr0
+        lda #>Frame1
+        sta SpritePtr0+1
+        jmp .return
+.SetFrame2
+ 	lda #<Frame2
+        sta SpritePtr0
+        lda #>Frame2
+        sta SpritePtr0+1
+	jmp .return
+.idle
+	lda #<Frame0
+        sta SpritePtr0
+        lda #>Frame0
+        sta SpritePtr0+1
+.return   
+        rts
+        
+AnimatePlayer1 subroutine 
+        lda #$0C
+	and SWCHA
+        cmp #$0C
+        beq .idle
+        
+	lda FrameCounter
+        lsr
+        lsr
+        lsr
+        lsr
+       	
+        bcs .SetFrame2
+        
+        lda #<Frame1
+        sta SpritePtr1
+        lda #>Frame1
+        sta SpritePtr1+1
+        jmp .return
+.SetFrame2
+ 	lda #<Frame2
+        sta SpritePtr1
+        lda #>Frame2
+        sta SpritePtr1+1
+	jmp .return
+.idle
+	lda #<Frame0
+        sta SpritePtr1
+        lda #>Frame0
+        sta SpritePtr1+1
+.return   
+        rts
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; 		Set Horizontal Position
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+; The X register contains the index of the desired object:
+;  X=0: player 0
+;  X=1: player 1
+;  X=2: missile 0
+;  X=3: missile 1
+;  X=4: ball
+SetHorizPos
+	sta WSYNC	; start a new line
+        bit 0		; waste 3 cycles
+	sec		; set carry flag
+DivideLoop
+	sbc #15		; subtract 15
+	bcs DivideLoop	; branch until negative
+	eor #7		; calculate fine offset
+	asl
+	asl
+	asl
+	asl
+	sta RESP0,x	; fix coarse position
+	sta HMP0,x	; set fine offset
+	rts		; return to caller
+        
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; 		      Miscellaneous 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;        
+
+GameReset subroutine 
+	lda #MAX_WIN_FRAMES
+        sta WinFrameCounter
+        
+        lda AreaBKCol
+        sta BKColour
+        
+        ; Intitial Scores and missile positions
+        lda #0
+        sta Score0
+        sta Score1
+        
+        sta GameWon
+        
+        lda #%10000000
+        ; Set Missiles off? 
+        sta MissileVel0
+        sta MissileVel1
+        
+        ; Set Reticles to centre
+        lda #RETICLE_START
+        sta MissileY0
+        sta MissileY1
+        
+        ; Initial Player and missile X positions
+        ; Player 0
+       	lda #P0_START_POSITION
+        sta XPos0
+        sta MissileX0
+        
+        ; Player 1
+        lda #P1_START_POSITION
+        sta XPos1
+        sta MissileX1
+
+	rts
+        
+
+        
+        
+SetUpPtrs subroutine
+	lda #<Frame0
+        sta SpritePtr0
+        lda #>Frame0
+        sta SpritePtr0+1
+        
+        lda #<Frame0
+        sta SpritePtr1
+        lda #>Frame0
+        sta SpritePtr1+1
+        
+        lda #<ColourPlayer0
+        sta ColourPtr0
+        lda #>ColourPlayer0
+        sta ColourPtr0+1
+          
+        lda #<ColourPlayer1
+        sta ColourPtr1
+        lda #>ColourPlayer1
+        sta ColourPtr1+1
+        
+        rts
+   
+; Credit to 8Blit - Atari 2600 Game Programming
+PlaySound subroutine 
+	lda SWCHB
+        asl  
+        bmi .nomute
+        lda #0
+        sta AUDV0
+        sta AUDV1
+        jmp .return
+.nomute
+	lda SoundType,y
+        sta AUDC0,x
+        lda SoundVolume,y
+        sta AUDV0,x
+        lda SoundPitch,y
+        sta AUDF0,x
+        lda SoundLength,y
+        sta SoundOn,x 
+.return
+        rts
+        
+ProcessSound subroutine
+	lda SWCHB
+        asl  
+        bmi .nomute
+        lda #0
+        sta AUDV0
+        sta AUDV1
+        jmp .return
+.nomute
+	
+	ldx #1
+.soundChnl
+	lda SoundOn,x
+        beq .soundDone
+        dec SoundOn,x
+        bne .soundContinue
+        lda #0
+        sta AUDV0,x
+.soundDone
+.soundContinue
+	dex
+        beq .soundChnl
+.return
+	rts
+        
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;		 Area Background and Dirt Colours
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+        
+        org $FE00
+        
+BackgroundColours
+	.byte #$ba ;0
+        .byte #$1a ;1
+        .byte #$61 ;2
+        .byte #$ff ;3
+        
+DirtColours
+	.byte #$54 ;0
+        .byte #$a0 ;1
+        .byte #$1e ;2
+        .byte #$d0 ;3
+  
+; Credit to 8Blit - Atari 2600 Game Programming  
+SoundType
+	.byte #$0C
+        .byte #$02
+        .byte #$06
+        .byte #$06
+        .byte #$08
+        .byte #3
+        .byte #12
+        .byte #12
+        .byte #12
+SoundVolume
+	.byte #$02
+        .byte #$06
+        .byte #$04
+        .byte #$04
+        .byte #$02
+        .byte #$01
+        .byte #2
+        .byte #2
+        .byte #2
+SoundPitch
+	.byte #$0D
+        .byte #$03
+        .byte #$09
+        .byte #$03
+        .byte #19
+        .byte #13
+        .byte #26
+        .byte #19
+        .byte #15
+SoundLength
+	.byte #$01
+        .byte #$08
+        .byte #$03
+        .byte #$03
+        .byte #4
+        .byte #4
+        .byte #4
+        .byte #4
+        .byte #4
+        
+ProcData
+House
+        .byte #%00011000;--
+        .byte #%00111100;--
+        .byte #%00111100;--
+        .byte #%01111110;--
+        .byte #%01111110;--
+        .byte #%01100110;--
+        .byte #%01100110;--
+        .byte #%01111110;--
+        .byte #%01111110;--
+        .byte #%01100110;--
+        .byte #%01100110;--
+        .byte #%01100110;--
+TwoStory
+        .byte #%01111100;--
+        .byte #%11111110;--
+        .byte #%10010010;--
+        .byte #%10010010;--
+        .byte #%11111110;--
+        .byte #%10010010;--
+        .byte #%10010010;--
+        .byte #%11111110;--
+        .byte #%11111110;--
+        .byte #%11111110;--
+        .byte #%11101110;--
+        .byte #%11101110;--
+Car
+        .byte #%00000000;--
+        .byte #%00000000;--
+        .byte #%00000000;--
+        .byte #%00000000;--
+        .byte #%00000000;--
+        .byte #%00000000;--
+        .byte #%00000000;--
+        .byte #%00111110;--
+        .byte #%00010010;--
+        .byte #%01111110;--
+        .byte #%01111110;--
+        .byte #%01100110;--      
+Office
+        .byte #%01111111;--
+        .byte #%01010101;--
+        .byte #%01111111;--
+        .byte #%01010101;--
+        .byte #%01111111;--
+        .byte #%01010101;--
+        .byte #%01111111;--
+        .byte #%01010101;--
+        .byte #%01111111;--
+        .byte #%01010101;--
+        .byte #%01111111;--
+        .byte #%01111101;--
+        
+        
+;---Graphics Data from PlayerPal 2600---
+
+HalfProcData
+SmallHouse
+        .byte #%10000000;--
+        .byte #%10000000;--
+        .byte #%11000000;--
+        .byte #%11100000;--
+        .byte #%11110000;--
+        .byte #%10010000;--
+        .byte #%10010000;--
+        .byte #%11110000;--
+        .byte #%11010000;--
+        .byte #%11010000;--
+        .byte #%11010000;--
+        .byte #%11110000;--
+        
+Bin
+        .byte #%00000000;--
+        .byte #%00000000;--
+        .byte #%00000000;--
+        .byte #%00000000;--
+        .byte #%00000000;--
+        .byte #%00000000;--
+        .byte #%00000000;--
+        .byte #%00000000;--
+        .byte #%00100000;--
+        .byte #%01110000;--
+        .byte #%01110000;--
+        .byte #%01110000;--
+        
+House2
+        .byte #%00000000;--
+        .byte #%00010000;--
+        .byte #%00010000;--
+        .byte #%00110000;--
+        .byte #%01110000;--
+        .byte #%01110000;--
+        .byte #%01010000;--
+        .byte #%01010000;--
+        .byte #%01010000;--
+        .byte #%01010000;--
+        .byte #%11110000;--
+        .byte #%11110000;--
+Flag
+        .byte #%00000000;--
+        .byte #%00100000;--
+        .byte #%01100000;--
+        .byte #%11100000;--
+        .byte #%11100000;--
+        .byte #%00100000;--
+        .byte #%00100000;--
+        .byte #%00100000;--
+        .byte #%00100000;--
+        .byte #%00100000;--
+        .byte #%00100000;--
+        .byte #%11110000;--
+;---End Graphics Data---
+
+	
+
+	org $FF00
+        
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;			     BITMAPS
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+; Scoreboard digits bitmap
+; ------------------------
+
+; Credit to 8BitWorkshop, Steven Hugg
+; Bitmap pattern for digits
+DigitsBitmap ;;{w:8,h:5,count:10,brev:1};;
+        .byte $EE,$AA,$AA,$AA,$EE
+        .byte $22,$22,$22,$22,$22
+        .byte $EE,$22,$EE,$88,$EE
+        .byte $EE,$22,$66,$22,$EE
+        .byte $AA,$AA,$EE,$22,$22
+        .byte $EE,$88,$EE,$22,$EE
+        .byte $EE,$88,$EE,$AA,$EE
+        .byte $EE,$22,$22,$22,$22
+        .byte $EE,$AA,$EE,$AA,$EE
+        .byte $EE,$AA,$EE,$22,$EE
+;;end
+
+
+;      Player Bitmap
+; ------------------------
+            
+;---Graphics Data from PlayerPal 2600---
+
+Frame0
+        .byte #%11111110;$02
+        .byte #%01101100;$00
+        .byte #%00101000;$00
+        .byte #%01101100;$00
+        .byte #%01101100;$94
+        .byte #%01101100;$94
+        .byte #%01111100;$94
+        .byte #%01111100;$94
+        .byte #%00111000;$94
+        .byte #%01111100;$00
+        .byte #%00111100;$94
+        .byte #%01111010;$94
+        .byte #%01110110;$94
+        .byte #%11101110;$94
+        .byte #%11011110;$94
+        .byte #%11111110;$94
+        .byte #%01111100;$00
+        .byte #%00111000;$0E
+        .byte #%01111100;$94
+        .byte #%01111100;$94
+        .byte #%01111100;$94
+        .byte #%00111000;$94
+Frame1
+        .byte #%10011110;$02
+        .byte #%00001100;$00
+        .byte #%00001000;$00
+        .byte #%01101100;$00
+        .byte #%01101100;$94
+        .byte #%01101100;$94
+        .byte #%01111100;$94
+        .byte #%01111100;$94
+        .byte #%00111000;$94
+        .byte #%01111100;$00
+        .byte #%00111100;$94
+        .byte #%01111010;$94
+        .byte #%01110110;$94
+        .byte #%11101110;$94
+        .byte #%11011110;$94
+        .byte #%11111110;$94
+        .byte #%01111100;$00
+        .byte #%00111000;$0E
+        .byte #%01111100;$94
+        .byte #%01111100;$94
+        .byte #%01111100;$94
+        .byte #%00111000;$94
+Frame2
+        .byte #%11110010;$02
+        .byte #%01100000;$00
+        .byte #%00100000;$00
+        .byte #%01101100;$00
+        .byte #%01101100;$94
+        .byte #%01101100;$94
+        .byte #%01111100;$94
+        .byte #%01111100;$94
+        .byte #%00111000;$94
+        .byte #%01111100;$00
+        .byte #%00111100;$94
+        .byte #%01111010;$94
+        .byte #%01110110;$94
+        .byte #%11101110;$94
+        .byte #%11011110;$94
+        .byte #%11111110;$94
+        .byte #%01111100;$00
+        .byte #%00111000;$0E
+        .byte #%01111100;$94
+        .byte #%01111100;$94
+        .byte #%01111100;$94
+        .byte #%00111000;$94
+;---End Graphics Data---
+
+
+;---Color Data from PlayerPal 2600---
+
+ColourPlayer0
+        .byte #$02;
+        .byte #$00;
+        .byte #$00;
+        .byte #$00;
+        .byte #PLAYER_0_COLOUR;
+        .byte #PLAYER_0_COLOUR;
+        .byte #PLAYER_0_COLOUR;
+        .byte #PLAYER_0_COLOUR;
+        .byte #PLAYER_0_COLOUR;
+        .byte #$00;
+        .byte #PLAYER_0_COLOUR;
+        .byte #PLAYER_0_COLOUR;
+        .byte #PLAYER_0_COLOUR;
+        .byte #PLAYER_0_COLOUR;
+        .byte #PLAYER_0_COLOUR;
+        .byte #PLAYER_0_COLOUR;
+        .byte #$00;
+        .byte #$0E;
+        .byte #PLAYER_0_COLOUR;
+        .byte #PLAYER_0_COLOUR;
+        .byte #PLAYER_0_COLOUR;
+        .byte #PLAYER_0_COLOUR;
+        
+ColourPlayer1
+        .byte #$02;
+        .byte #$00;
+        .byte #$00;
+        .byte #$00;
+        .byte #PLAYER_1_COLOUR;
+        .byte #PLAYER_1_COLOUR;
+        .byte #PLAYER_1_COLOUR;
+        .byte #PLAYER_1_COLOUR;
+        .byte #PLAYER_1_COLOUR;
+        .byte #$00;
+        .byte #PLAYER_1_COLOUR;
+        .byte #PLAYER_1_COLOUR;
+        .byte #PLAYER_1_COLOUR;
+        .byte #PLAYER_1_COLOUR;
+        .byte #PLAYER_1_COLOUR;
+        .byte #PLAYER_1_COLOUR;
+        .byte #$00;
+        .byte #$0E;
+        .byte #PLAYER_1_COLOUR;
+        .byte #PLAYER_1_COLOUR;
+        .byte #PLAYER_1_COLOUR;
+        .byte #PLAYER_1_COLOUR;
+;---End Color Data---
+
+
+; Credit to Steven Hugg
+; Playfield bitmasks for all 40 dirt columns
+PFMaskTable
+	REPEAT 2
+	.byte #$10,#$20,#$40,#$80
+	.byte #$80,#$40,#$20,#$10,#$08,#$04,#$02,#$01
+	.byte #$01,#$02,#$04,#$08,#$10,#$20,#$40,#$80
+        REPEND
+
+; Dirt array byte offsets for all 40 dirt columns
+PFOfsTable
+	.byte NDR*0,NDR*0,NDR*0,NDR*0
+	.byte NDR*1,NDR*1,NDR*1,NDR*1, NDR*1,NDR*1,NDR*1,NDR*1
+	.byte NDR*2,NDR*2,NDR*2,NDR*2, NDR*2,NDR*2,NDR*2,NDR*2
+	.byte NDR*3,NDR*3,NDR*3,NDR*3
+	.byte NDR*4,NDR*4,NDR*4,NDR*4, NDR*4,NDR*4,NDR*4,NDR*4
+	.byte NDR*5,NDR*5,NDR*5,NDR*5, NDR*5,NDR*5,NDR*5,NDR*5
+
+;---End Color Data---
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Epilogue
+
+	org $fffc
+        .word Start	; reset vector
+        .word Start	; BRK vector
