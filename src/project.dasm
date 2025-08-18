@@ -67,24 +67,23 @@ Dirt		ds 72	; 6x12 bytes (Dirt map) ;119 bytes of memory
 
  
 ; Constants 
-SpriteHeight 	equ #21
+SPRITE_HEIGHT 	equ #21
+PLAYER_0_COLOUR equ $94
+PLAYER_1_COLOUR equ $42
+FLOOR_COLOUR	equ $04
 
-Player0Colour   equ $94
-Player1Colour   equ $42
-FloorCol	equ $04
+P0_START_POSITION	equ #40
+P1_START_POSITION	equ #112
+RETICLE_START	equ #70
 
-P0StartPos	equ #40
-P1StartPos	equ #112
-ReticleStart	equ #20
+MAX_WIN_FRAMES 	equ #150
 
-WinFrames 	equ #150
+DIRT_HEIGHT	equ #4	; Height of each dirt spot in 2xScanlines
+NUM_DIRT_ROWS	equ #12	; Number of dirt rows 
+NDR		equ NUM_DIRT_ROWS
+DIRT_Y_START	equ #32 
 
-DirtHeight	equ #4	; Height of each dirt spot in 2xScanlines
-NumDirtRows	equ #12	; Number of dirt rows 
-NDR		equ NumDirtRows
-DirtYStart	equ #32 
-
-NumAreas	equ 4
+NUM_AREAS	equ #4
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -110,7 +109,7 @@ Start
         
         jsr SetUpPtrs
         
-        lda #WinFrames
+        lda #MAX_WIN_FRAMES
         sta WinFrameCounter
         
         lda #0
@@ -139,18 +138,18 @@ Start
         
 
         ; Set Reticles to top
-        lda #ReticleStart
+        lda #RETICLE_START
         sta MissileY0
         sta MissileY1
         
         ; Initial Player and missile X positions
         ; Player 0
-       	lda #P0StartPos
+       	lda #P0_START_POSITION
         sta XPos0
         sta MissileX0
         
         ; Player 1
-        lda #P1StartPos
+        lda #P1_START_POSITION
         sta XPos1
         sta MissileX1
         
@@ -237,7 +236,7 @@ NextFrame
         lda #0
         jmp StoreSize0
 CursorSize0
-	lda #%00011000
+	lda #%000011000
 StoreSize0
 	sta NUSIZ0
 
@@ -257,7 +256,7 @@ StoreSize1
         lda #$af 
         jmp StoreColour0
 ReticleColour0
-	lda #Player0Colour
+	lda #PLAYER_0_COLOUR
 StoreColour0
 	sta MissileColour0
         
@@ -267,7 +266,7 @@ StoreColour0
         lda #$af 
         jmp StoreColour1
 ReticleColour1
-	lda #Player1Colour
+	lda #PLAYER_1_COLOUR
 StoreColour1
 	sta MissileColour1
         
@@ -315,9 +314,9 @@ StoreColour1
         ldx #$ff
 DrawLoop
         iny 			; Go to next brick row 
-        lda #DirtHeight
+        lda #DIRT_HEIGHT
         sta DirtHeightCounter
-        cpy #NumDirtRows
+        cpy #NUM_DIRT_ROWS
         bcs DoneDirtDraw
         
         
@@ -374,7 +373,7 @@ DrawLoop
 .Finish1
 	sta ENAM1	
         			              
-        cpx #DirtYStart
+        cpx #DIRT_Y_START
         bmi .innerLoop		
                            	
         
@@ -385,28 +384,28 @@ DrawLoop
         
         
         ; HBLANK
-        lda Dirt+NumDirtRows*0,y ; 0+12*0,y
+        lda Dirt+NUM_DIRT_ROWS*0,y ; 0+12*0,y
         sta PF0
-        lda Dirt+NumDirtRows*1,y ; 0+12*1,y	 
+        lda Dirt+NUM_DIRT_ROWS*1,y ; 0+12*1,y	 
         sta PF1
-        lda Dirt+NumDirtRows*2,y
+        lda Dirt+NUM_DIRT_ROWS*2,y
         sta PF2			 ; 21 machine cycles - 1 off HBLANK
       	; END HBLANK
       	
         inx			 ; Increment scanline counter	
-        	         ; timing
+        			 ; timing
        
-        lda Dirt+NumDirtRows*3,y
+        lda Dirt+NUM_DIRT_ROWS*3,y
         sta PF0
-        lda Dirt+NumDirtRows*4,y
+        lda Dirt+NUM_DIRT_ROWS*4,y
         sta PF1
-        lda Dirt+NumDirtRows*5,y
+        lda Dirt+NUM_DIRT_ROWS*5,y
         sta PF2			 ; 21 machine cycles 
         			 ; TOTAL for PFx is 42 machine cycles. 76 - 42 machine cycles = 34	 
         
         lda DirtHeightCounter
         bne .innerLoop
-        beq DrawLoop		; Total 55 machine cycles used here, 21 machine cycles free 
+        beq DrawLoop		 ; Total 55 machine cycles used here, 21 machine cycles free 
 
 DoneDirtDraw 
 	sta WSYNC
@@ -422,7 +421,7 @@ DoneDirtDraw
  ; DRAW PLAYER LOOP
  ; ----------------
         
-        lda #SpriteHeight
+        lda #SPRITE_HEIGHT
         sta Temp
 DrawSpriteLoop
 	ldy Temp
@@ -453,7 +452,7 @@ DrawSpriteLoop
         
         bne DrawSpriteLoop
         
-        lda #FloorCol
+        lda #FLOOR_COLOUR
         sta COLUBK
         
         ; TURN OFF PLAYER SPRITES 
@@ -501,14 +500,14 @@ DrawSpriteLoop
         dec WinFrameCounter
         jmp .next
 .noLoad1
-        cmp #WinFrameCounter/3*2
+        cmp #100
         bcc .skipSound0
         ldy #6
         ldx #1
         jsr PlaySound
         jmp .endofsound
 .skipSound0
-	cmp #WinFrameCounter/3+20
+	cmp #70
         bcc .skipSound1
         ldy #7
         ldx #1
@@ -579,7 +578,6 @@ NormalOverscan subroutine
         jsr AnimatePlayer0
         jsr AnimatePlayer1
 .gamewon
-
         rts
         
 GameWin subroutine
@@ -602,21 +600,20 @@ GameWin subroutine
         bcs .Player0Win
   	jmp .EndChangeColour
 .Player1Win
-        lda #Player1Colour-3
+        lda #PLAYER_1_COLOUR-3
         sta BKColour
         jmp .EndChangeColour
 .Player0Win
-        lda #Player0Colour+3
+        lda #PLAYER_0_COLOUR+3
         sta BKColour
 .EndChangeColour
         dec WinFrameCounter
-       	 
 	rts
         
 NewRound subroutine
 	inc Area
         lda Area
-        cmp #NumAreas
+        cmp #NUM_AREAS
         bne .noResetArea
         lda #0
         sta Area
@@ -638,7 +635,6 @@ MissileCollision subroutine
         sta Temp
 	lda #%11000000
         bit Temp
-        bne .collision
         beq .nocollision
 .collision
 
@@ -793,17 +789,17 @@ GetBCDBitmap subroutine
 CleanDirt
         ldy #$ff
         sec
-        sbc DirtYStart	; subtract top Y of dirt field
+        sbc #DIRT_Y_START	; subtract top Y of dirt field
 ; Divide by dirt height
 DivideRowLoop
 	iny
-        sbc #DirtHeight*2	; #
+        sbc #DIRT_HEIGHT*2	; #
 	bcs DivideRowLoop	; loop until < 0
-        cpy #NumDirtRows		; #
+        cpy #NUM_DIRT_ROWS		; #
         bcs NoBrickFound	
 ; Now that we have the line, get byte and bit offset for brick
 	clc
-        adc #DirtHeight*2	; #
+        adc #DIRT_HEIGHT*2	; #
 	pha	; save the remainder to return as result
 	txa
         clc
@@ -835,27 +831,27 @@ TestAllClean subroutine
 	ldx #$FF
 .CheckRow
 	inx
-	lda Dirt+NumDirtRows*0,x
+	lda Dirt+NUM_DIRT_ROWS*0,x
         and #$F0
         bne .NotClean
         
-        lda Dirt+NumDirtRows*1,x
+        lda Dirt+NUM_DIRT_ROWS*1,x
         bne .NotClean
         
-        lda Dirt+NumDirtRows*2,x
+        lda Dirt+NUM_DIRT_ROWS*2,x
         bne .NotClean
         
-        lda Dirt+NumDirtRows*3,x
+        lda Dirt+NUM_DIRT_ROWS*3,x
         and #$F0
         bne .NotClean
         
-        lda Dirt+NumDirtRows*4,x
+        lda Dirt+NUM_DIRT_ROWS*4,x
         bne .NotClean
         
-        lda Dirt+NumDirtRows*5,x
+        lda Dirt+NUM_DIRT_ROWS*5,x
         bne .NotClean
         
-        cpx #NumDirtRows-1
+        cpx #NUM_DIRT_ROWS-1
         bne .CheckRow
         rts
 .NotClean
@@ -891,16 +887,16 @@ LoadFull subroutine
 .FullLoop
 	inx
         lda #$F0
-        sta Dirt+NumDirtRows*0,x
-        sta Dirt+NumDirtRows*3,x
+        sta Dirt+NUM_DIRT_ROWS*0,x
+        sta Dirt+NUM_DIRT_ROWS*3,x
         
         lda #$FF
-        sta Dirt+NumDirtRows*1,x
-        sta Dirt+NumDirtRows*2,x
-        sta Dirt+NumDirtRows*4,x
-        sta Dirt+NumDirtRows*5,x
+        sta Dirt+NUM_DIRT_ROWS*1,x
+        sta Dirt+NUM_DIRT_ROWS*2,x
+        sta Dirt+NUM_DIRT_ROWS*4,x
+        sta Dirt+NUM_DIRT_ROWS*5,x
         
-        cpx #NumDirtRows-1
+        cpx #NUM_DIRT_ROWS-1
         bne .FullLoop
         
         rts
@@ -913,28 +909,28 @@ LoadRandom subroutine
 	
         lda NextFrame,y
         and #$F0
-        sta Dirt+NumDirtRows*0,x
+        sta Dirt+NUM_DIRT_ROWS*0,x
         
         iny
         lda NextFrame,y
         and #$F0
-        sta Dirt+NumDirtRows*3,x
+        sta Dirt+NUM_DIRT_ROWS*3,x
         
         iny
         lda NextFrame,y
-        sta Dirt+NumDirtRows,x
+        sta Dirt+NUM_DIRT_ROWS,x
         iny
         lda NextFrame,y
-        sta Dirt+NumDirtRows*2,x
+        sta Dirt+NUM_DIRT_ROWS*2,x
         iny
         lda NextFrame,y
-        sta Dirt+NumDirtRows*4,x
+        sta Dirt+NUM_DIRT_ROWS*4,x
         iny
         lda NextFrame,y
-        sta Dirt+NumDirtRows*5,x
+        sta Dirt+NUM_DIRT_ROWS*5,x
         iny
         
-        cpx #NumDirtRows-1
+        cpx #NUM_DIRT_ROWS-1
         bne .randomLoop
         
         sty RandomNum
@@ -943,7 +939,7 @@ LoadRandom subroutine
 LoadProcedural subroutine
 	inc RandomNum
 	ldx RandomNum
-        lda DrawLoop,x
+        lda #%11000000 ;DrawLoop,x
         sta Temp
         
         ldy #$FF
@@ -955,11 +951,11 @@ LoadProcedural subroutine
         pha
         tax
         jsr GetProcData
-	sta Dirt+NumDirtRows,y
+	sta Dirt+NUM_DIRT_ROWS,y
         pla
         tax
         jsr GetHalfProcData
-	sta Dirt+NumDirtRows*0,y
+	sta Dirt+NUM_DIRT_ROWS*0,y
         
         lda Temp
         and #$0C
@@ -967,16 +963,16 @@ LoadProcedural subroutine
         lsr
         tax
         jsr GetProcData
-        sta Dirt+NumDirtRows*2,y
+        sta Dirt+NUM_DIRT_ROWS*2,y
 
-      	cpy #NumDirtRows-1
+      	cpy #NUM_DIRT_ROWS-1
         bne .ProceduralLoop
        
 	rts
         
 LoadProcedural1 subroutine
 	ldx RandomNum
-        lda DrawLoop,x
+        lda #%11000000 ;DrawLoop,x
         sta Temp
         
         ldy #$FF
@@ -991,7 +987,7 @@ LoadProcedural1 subroutine
         lsr
         tax
         jsr GetProcData
-       	sta Dirt+NumDirtRows*4,y
+       	sta Dirt+NUM_DIRT_ROWS*4,y
         
         lda Temp
         and #$C0
@@ -1001,13 +997,13 @@ LoadProcedural1 subroutine
         pha
         tax
         jsr GetProcData
-        sta Dirt+NumDirtRows*5,y
+        sta Dirt+NUM_DIRT_ROWS*5,y
         pla
         tax
         jsr GetHalfProcData
-        sta Dirt+NumDirtRows*3,y
+        sta Dirt+NUM_DIRT_ROWS*3,y
         
-      	cpy #NumDirtRows-1
+      	cpy #NUM_DIRT_ROWS-1
         bne .ProceduralLoop
        
 	rts
@@ -1018,20 +1014,20 @@ LoadProcedural1 subroutine
 ; A will contain output
 GetProcData subroutine
         bne .next1
-        lda ProcData+NumDirtRows*0,y
+        lda ProcData+NUM_DIRT_ROWS*0,y
         jmp .load
 .next1
         dex
         bne .next2
-        lda ProcData+NumDirtRows*1,y
+        lda ProcData+NUM_DIRT_ROWS*1,y
         jmp .load
 .next2	
         dex
         bne .next3
-	lda ProcData+NumDirtRows*2,y
+	lda ProcData+NUM_DIRT_ROWS*2,y
         jmp .load
 .next3
-      	lda ProcData+NumDirtRows*3,y
+      	lda ProcData+NUM_DIRT_ROWS*3,y
 .load   
         rts
         
@@ -1040,20 +1036,20 @@ GetProcData subroutine
 ; A will contain output
 GetHalfProcData subroutine
         bne .next1
-        lda HalfProcData+NumDirtRows*0,y
+        lda HalfProcData+NUM_DIRT_ROWS*0,y
         jmp .load
 .next1
         dex
         bne .next2
-        lda HalfProcData+NumDirtRows*1,y
+        lda HalfProcData+NUM_DIRT_ROWS*1,y
         jmp .load
 .next2	
         dex
         bne .next3
-	lda HalfProcData+NumDirtRows*2,y
+	lda HalfProcData+NUM_DIRT_ROWS*2,y
         jmp .load
 .next3
-      	lda HalfProcData+NumDirtRows*3,y
+      	lda HalfProcData+NUM_DIRT_ROWS*3,y
 .load    
         rts
 	
@@ -1100,7 +1096,7 @@ MoveJoystick0 subroutine
         lda #%00100000	;down?
         bit SWCHA
         bne .SkipMoveDown
-        cpy #DirtYStart+DirtHeight*2*NumDirtRows
+        cpy #DIRT_Y_START+DIRT_HEIGHT*2*NUM_DIRT_ROWS
         bcs .SkipMoveDown
         iny
         iny
@@ -1145,7 +1141,7 @@ MoveJoystick1 subroutine
         lda #$02	;down?
         bit SWCHA
         bne .SkipMoveDown
-        cpy #DirtYStart+DirtHeight*2*NumDirtRows
+        cpy #DIRT_Y_START+DIRT_HEIGHT*2*NUM_DIRT_ROWS
         bcs .SkipMoveDown
         iny
         iny
@@ -1251,7 +1247,7 @@ DivideLoop
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;        
 
 GameReset subroutine 
-	lda #WinFrames
+	lda #MAX_WIN_FRAMES
         sta WinFrameCounter
         
         lda AreaBKCol
@@ -1270,18 +1266,18 @@ GameReset subroutine
         sta MissileVel1
         
         ; Set Reticles to centre
-        lda #ReticleStart
+        lda #RETICLE_START
         sta MissileY0
         sta MissileY1
         
         ; Initial Player and missile X positions
         ; Player 0
-       	lda #P0StartPos
+       	lda #P0_START_POSITION
         sta XPos0
         sta MissileX0
         
         ; Player 1
-        lda #P1StartPos
+        lda #P1_START_POSITION
         sta XPos1
         sta MissileX1
 
@@ -1330,7 +1326,7 @@ PlaySound subroutine
         lda SoundPitch,y
         sta AUDF0,x
         lda SoundLength,y
-        sta SoundOn,x
+        sta SoundOn,x 
 .return
         rts
         
@@ -1419,7 +1415,7 @@ SoundLength
         .byte #4
         .byte #4
         .byte #4
-
+        
 ProcData
 House
         .byte #%00011000;--
@@ -1646,48 +1642,48 @@ ColourPlayer0
         .byte #$00;
         .byte #$00;
         .byte #$00;
-        .byte #Player0Colour;
-        .byte #Player0Colour;
-        .byte #Player0Colour;
-        .byte #Player0Colour;
-        .byte #Player0Colour;
+        .byte #PLAYER_0_COLOUR;
+        .byte #PLAYER_0_COLOUR;
+        .byte #PLAYER_0_COLOUR;
+        .byte #PLAYER_0_COLOUR;
+        .byte #PLAYER_0_COLOUR;
         .byte #$00;
-        .byte #Player0Colour;
-        .byte #Player0Colour;
-        .byte #Player0Colour;
-        .byte #Player0Colour;
-        .byte #Player0Colour;
-        .byte #Player0Colour;
+        .byte #PLAYER_0_COLOUR;
+        .byte #PLAYER_0_COLOUR;
+        .byte #PLAYER_0_COLOUR;
+        .byte #PLAYER_0_COLOUR;
+        .byte #PLAYER_0_COLOUR;
+        .byte #PLAYER_0_COLOUR;
         .byte #$00;
         .byte #$0E;
-        .byte #Player0Colour;
-        .byte #Player0Colour;
-        .byte #Player0Colour;
-        .byte #Player0Colour;
+        .byte #PLAYER_0_COLOUR;
+        .byte #PLAYER_0_COLOUR;
+        .byte #PLAYER_0_COLOUR;
+        .byte #PLAYER_0_COLOUR;
         
 ColourPlayer1
         .byte #$02;
         .byte #$00;
         .byte #$00;
         .byte #$00;
-        .byte #Player1Colour;
-        .byte #Player1Colour;
-        .byte #Player1Colour;
-        .byte #Player1Colour;
-        .byte #Player1Colour;
+        .byte #PLAYER_1_COLOUR;
+        .byte #PLAYER_1_COLOUR;
+        .byte #PLAYER_1_COLOUR;
+        .byte #PLAYER_1_COLOUR;
+        .byte #PLAYER_1_COLOUR;
         .byte #$00;
-        .byte #Player1Colour;
-        .byte #Player1Colour;
-        .byte #Player1Colour;
-        .byte #Player1Colour;
-        .byte #Player1Colour;
-        .byte #Player1Colour;
+        .byte #PLAYER_1_COLOUR;
+        .byte #PLAYER_1_COLOUR;
+        .byte #PLAYER_1_COLOUR;
+        .byte #PLAYER_1_COLOUR;
+        .byte #PLAYER_1_COLOUR;
+        .byte #PLAYER_1_COLOUR;
         .byte #$00;
         .byte #$0E;
-        .byte #Player1Colour;
-        .byte #Player1Colour;
-        .byte #Player1Colour;
-        .byte #Player1Colour;
+        .byte #PLAYER_1_COLOUR;
+        .byte #PLAYER_1_COLOUR;
+        .byte #PLAYER_1_COLOUR;
+        .byte #PLAYER_1_COLOUR;
 ;---End Color Data---
 
 
