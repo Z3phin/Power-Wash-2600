@@ -10,7 +10,7 @@
         seg.u Variables
 	org $80
 
-temp	.byte	; Temp variable, used for variety of purposees
+temp			.byte	; Temp variable, used for variety of purposees
 
 dirt_height_counter 	.byte
 
@@ -19,6 +19,8 @@ random_num_index	.byte	; Represents the line of code used to generate a random n
 row_cleaned		.byte
 
 frame_counter 		.byte
+
+win_frame_counter	.byte
 
 is_game_won		.byte
 
@@ -43,33 +45,33 @@ x_positions	         equ (p0_x_position) ; Easy indexable name
 p0_colour   		.byte	; Player0 colour on given scanline
 p1_colour		.byte	; Player1 colour on given scanline
 ; Missile Positions
-MissileY0	byte    
-MissileY1	byte
-MissileX0	byte
-MissileX1	byte
+m0_y_position		.byte    
+m1_y_position		.byte
+missile_y_positions	 equ (m0_y_position)
+m0_x_position		.byte ; FUNCTIONALLY UNUSED 
+m1_x_position		.byte ; FUNCTIONALLY UNUSED	
+missile_x_positions	 equ (m0_x_position)
+; Missile Velocities
+m0_velocity		.byte
+m1_velocity		.byte
+missile_velocitiies 	 equ (m0_velocity)
+; Missile Colours
+m0_colour  		.byte
+m1_colour  		.byte
+missile_colours		 equ (m0_colour)
 
-MissileVel0	byte
-MissileVel1	byte
-
-MissileColour0  byte
-MissileColour1  byte
-
-WinFrameCounter	byte
 
 ; Sprite Pointers
-ColourPtr0	word
-ColourPtr1	word
-SpritePtr0	word
-SpritePtr1	word
+p0_colour_ptr		.word
+p1_colour_ptr		.word
+p0_sprite_ptr		.word
+p1_sprite_ptr		.word
 
 ; Score Font Buffer 2x5 array
-font_buffer 	ds 10
+font_buffer 		ds 10
 
-; Dirt 
-Dirt		ds 72	; 6x12 bytes (Dirt map) ;119 bytes of memory
-
-
-score 		equ (score_0)
+; Dirt (column major)
+dirt_array		ds 72	; 6x12 bytes (Dirt map)
 
 ; Constants 
 SPRITE_HEIGHT 	equ #21
@@ -116,7 +118,7 @@ Start
         jsr SetUpPtrs
         
         lda #MAX_WIN_FRAMES
-        sta WinFrameCounter
+        sta win_frame_counter
         
         lda #0
         sta area_index
@@ -138,25 +140,25 @@ Start
         
         lda #%10000000
         ; Set Missiles off? 
-        sta MissileVel0
-        sta MissileVel1
+        sta m0_velocity
+        sta m1_velocity
         
 
         ; Set Reticles to top
         lda #RETICLE_START
-        sta MissileY0
-        sta MissileY1
+        sta m0_y_position
+        sta m1_y_position
         
         ; Initial Player and missile X positions
         ; Player 0
        	lda #P0_START_POSITION
         sta p0_x_position
-        sta MissileX0
+        sta m0_x_position
         
         ; Player 1
         lda #P1_START_POSITION
         sta p1_x_position
-        sta MissileX1
+        sta m1_x_position
         
         ; Set delay for displaying P0 until GRP1 is set
         lda #1
@@ -236,7 +238,7 @@ NextFrame
         
         
         ; Make the missile big if it is Reticle Mode for player 0
-        lda MissileVel0
+        lda m0_velocity
         bmi CursorSize0
         lda #0
         jmp StoreSize0
@@ -246,7 +248,7 @@ StoreSize0
 	sta NUSIZ0
 
 	; Make the missile big if it is Reticle Mode for player 1
-        lda MissileVel1
+        lda m1_velocity
         bmi CursorSize1
         lda #0
         jmp StoreSize1
@@ -256,24 +258,24 @@ StoreSize1
 	sta NUSIZ1
         
         ; Recolour missile for either Reticle Mode or Stream Mode
-        lda MissileVel0
+        lda m0_velocity
         bmi ReticleColour0
         lda #$af 
         jmp StoreColour0
 ReticleColour0
 	lda #PLAYER_0_COLOUR
 StoreColour0
-	sta MissileColour0
+	sta m0_colour
         
         ; Recolour missile for either Reticle Mode or Stream Mode
-        lda MissileVel1
+        lda m1_velocity
         bmi ReticleColour1
         lda #$af 
         jmp StoreColour1
 ReticleColour1
 	lda #PLAYER_1_COLOUR
 StoreColour1
-	sta MissileColour1
+	sta m1_colour
         
         
         sta WSYNC
@@ -302,9 +304,9 @@ StoreColour1
         lda #0
         sta GRP0
         sta GRP1
-        lda MissileColour0
+        lda m0_colour
         sta COLUP0
-        lda MissileColour1
+        lda m1_colour
         sta COLUP1
         
         sta WSYNC
@@ -339,15 +341,15 @@ DrawLoop
         sta PF1                        
         sta PF2
         
-        lda MissileVel0
+        lda m0_velocity
         bmi .DrawReticle0	
         
-        lda MissileY0
+        lda m0_y_position
         cmp temp		; If the scanline is more than the Missile Y, disable the missile				
         bcc .EnableMissile0
 	jmp .DisableMissile0
 .DrawReticle0
-	lda MissileY0
+	lda m0_y_position
         cmp temp		
         beq .EnableMissile0		
 .DisableMissile0
@@ -359,15 +361,15 @@ DrawLoop
 	sta ENAM0
             
                 
-        lda MissileVel1
+        lda m1_velocity
         bmi .DrawReticle1
         
-        lda MissileY1
+        lda m1_y_position
         cmp temp		; If the scanline is more than the Missile Y, disable the missile				
         bcc .EnableMissile1
 	jmp .DisableMissile1
 .DrawReticle1
-	lda MissileY1
+	lda m1_y_position
         cmp temp		
         beq .EnableMissile1		
 .DisableMissile1
@@ -389,22 +391,22 @@ DrawLoop
         
         
         ; HBLANK
-        lda Dirt+NUM_DIRT_ROWS*0,y ; 0+12*0,y
+        lda dirt_array+NUM_DIRT_ROWS*0,y ; 0+12*0,y
         sta PF0
-        lda Dirt+NUM_DIRT_ROWS*1,y ; 0+12*1,y	 
+        lda dirt_array+NUM_DIRT_ROWS*1,y ; 0+12*1,y	 
         sta PF1
-        lda Dirt+NUM_DIRT_ROWS*2,y
+        lda dirt_array+NUM_DIRT_ROWS*2,y
         sta PF2			 ; 21 machine cycles - 1 off HBLANK
       	; END HBLANK
       	
         inx			 ; Increment scanline counter	
         			 ; timing
        
-        lda Dirt+NUM_DIRT_ROWS*3,y
+        lda dirt_array+NUM_DIRT_ROWS*3,y
         sta PF0
-        lda Dirt+NUM_DIRT_ROWS*4,y
+        lda dirt_array+NUM_DIRT_ROWS*4,y
         sta PF1
-        lda Dirt+NUM_DIRT_ROWS*5,y
+        lda dirt_array+NUM_DIRT_ROWS*5,y
         sta PF2			 ; 21 machine cycles 
         			 ; TOTAL for PFx is 42 machine cycles. 76 - 42 machine cycles = 34	 
         
@@ -431,14 +433,14 @@ DoneDirtDraw
 DrawSpriteLoop
 	ldy temp
         
-        lda (ColourPtr0),y	; Colour for both lines
+        lda (p0_colour_ptr),y	; Colour for both lines
         sta p0_colour		; A -> ColP0
-        lda (SpritePtr0),y	; Bitmap for first line
+        lda (p0_sprite_ptr),y	; Bitmap for first line
         sta GRP0		; A -> [GRP0] (delayed due to VDELP0)
         
-        lda (ColourPtr1),y
+        lda (p1_colour_ptr),y
         tax
-        lda (SpritePtr1),y
+        lda (p1_sprite_ptr),y
         tay
         
         lda p0_colour 
@@ -486,7 +488,7 @@ DrawSpriteLoop
 	lda #0
         sta AUDV1
 	
-	lda WinFrameCounter
+	lda win_frame_counter
         bne .noReset
         jsr NewRound
         jmp .next
@@ -495,14 +497,14 @@ DrawSpriteLoop
         bne .noLoad
         ldx #0
         jsr LoadDirt
-        dec WinFrameCounter
+        dec win_frame_counter
         jmp .next
 .noLoad 
 	cmp #1
         bne .noLoad1
         ldx #1
         jsr LoadDirt
-        dec WinFrameCounter
+        dec win_frame_counter
         jmp .next
 .noLoad1
         cmp #100
@@ -536,7 +538,7 @@ DrawSpriteLoop
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 NormalOverscan subroutine
-	lda MissileVel0
+	lda m0_velocity
         bmi .noStream0
         
         ldy #5
@@ -548,7 +550,7 @@ NormalOverscan subroutine
  	jsr MissileCollision
 .noStream0
         ; Skip Collisions in Reticle Mode
-        lda MissileVel1
+        lda m1_velocity
         bmi .noStream1
         
         ldy #5
@@ -572,10 +574,10 @@ NormalOverscan subroutine
         
         ; Read Button Input for next frame
         lda INPT4
-	sta MissileVel0
+	sta m0_velocity
         
         lda INPT5
-	sta MissileVel1 
+	sta m1_velocity 
        
         ; Read Movement Input
         jsr MoveJoystick0
@@ -587,7 +589,7 @@ NormalOverscan subroutine
         
 GameWin subroutine
 
-	lda WinFrameCounter
+	lda win_frame_counter
         lsr
         lsr
         lsr
@@ -612,7 +614,7 @@ GameWin subroutine
         lda #PLAYER_0_COLOUR+3
         sta bk_colour
 .EndChangeColour
-        dec WinFrameCounter
+        dec win_frame_counter
 	rts
         
 NewRound subroutine
@@ -647,7 +649,7 @@ MissileCollision subroutine
         tay		; Move the player we are looking at into the Y register
         pha		; Save the contents of the X register
         
-        lda MissileY0,y	; A contains missile Y coordinate  
+        lda missile_y_positions,y	; A contains missile Y coordinate  
         ldx x_positions,y	; X contains missile X coordinate
         
         jsr CleanDirt
@@ -818,10 +820,10 @@ DivideRowLoop
         tay
         lda PFMaskTable,x
         eor #$ff
-        and Dirt,y
-        cmp Dirt,y		; was there a change?
+        and dirt_array,y
+        cmp dirt_array,y		; was there a change?
         beq NoBrickFound2	; no, so return -1 as result
-        sta Dirt,y
+        sta dirt_array,y
         sta row_cleaned
         pla		; return remainder as result
         rts
@@ -836,24 +838,24 @@ TestAllClean subroutine
 	ldx #$FF
 .CheckRow
 	inx
-	lda Dirt+NUM_DIRT_ROWS*0,x
+	lda dirt_array+NUM_DIRT_ROWS*0,x
         and #$F0
         bne .NotClean
         
-        lda Dirt+NUM_DIRT_ROWS*1,x
+        lda dirt_array+NUM_DIRT_ROWS*1,x
         bne .NotClean
         
-        lda Dirt+NUM_DIRT_ROWS*2,x
+        lda dirt_array+NUM_DIRT_ROWS*2,x
         bne .NotClean
         
-        lda Dirt+NUM_DIRT_ROWS*3,x
+        lda dirt_array+NUM_DIRT_ROWS*3,x
         and #$F0
         bne .NotClean
         
-        lda Dirt+NUM_DIRT_ROWS*4,x
+        lda dirt_array+NUM_DIRT_ROWS*4,x
         bne .NotClean
         
-        lda Dirt+NUM_DIRT_ROWS*5,x
+        lda dirt_array+NUM_DIRT_ROWS*5,x
         bne .NotClean
         
         cpx #NUM_DIRT_ROWS-1
@@ -892,14 +894,14 @@ LoadFull subroutine
 .FullLoop
 	inx
         lda #$F0
-        sta Dirt+NUM_DIRT_ROWS*0,x
-        sta Dirt+NUM_DIRT_ROWS*3,x
+        sta dirt_array+NUM_DIRT_ROWS*0,x
+        sta dirt_array+NUM_DIRT_ROWS*3,x
         
         lda #$FF
-        sta Dirt+NUM_DIRT_ROWS*1,x
-        sta Dirt+NUM_DIRT_ROWS*2,x
-        sta Dirt+NUM_DIRT_ROWS*4,x
-        sta Dirt+NUM_DIRT_ROWS*5,x
+        sta dirt_array+NUM_DIRT_ROWS*1,x
+        sta dirt_array+NUM_DIRT_ROWS*2,x
+        sta dirt_array+NUM_DIRT_ROWS*4,x
+        sta dirt_array+NUM_DIRT_ROWS*5,x
         
         cpx #NUM_DIRT_ROWS-1
         bne .FullLoop
@@ -914,25 +916,25 @@ LoadRandom subroutine
 	
         lda NextFrame,y
         and #$F0
-        sta Dirt+NUM_DIRT_ROWS*0,x
+        sta dirt_array+NUM_DIRT_ROWS*0,x
         
         iny
         lda NextFrame,y
         and #$F0
-        sta Dirt+NUM_DIRT_ROWS*3,x
+        sta dirt_array+NUM_DIRT_ROWS*3,x
         
         iny
         lda NextFrame,y
-        sta Dirt+NUM_DIRT_ROWS,x
+        sta dirt_array+NUM_DIRT_ROWS,x
         iny
         lda NextFrame,y
-        sta Dirt+NUM_DIRT_ROWS*2,x
+        sta dirt_array+NUM_DIRT_ROWS*2,x
         iny
         lda NextFrame,y
-        sta Dirt+NUM_DIRT_ROWS*4,x
+        sta dirt_array+NUM_DIRT_ROWS*4,x
         iny
         lda NextFrame,y
-        sta Dirt+NUM_DIRT_ROWS*5,x
+        sta dirt_array+NUM_DIRT_ROWS*5,x
         iny
         
         cpx #NUM_DIRT_ROWS-1
@@ -956,11 +958,11 @@ LoadProcedural subroutine
         pha
         tax
         jsr GetProcData
-	sta Dirt+NUM_DIRT_ROWS,y
+	sta dirt_array+NUM_DIRT_ROWS,y
         pla
         tax
         jsr GetHalfProcData
-	sta Dirt+NUM_DIRT_ROWS*0,y
+	sta dirt_array+NUM_DIRT_ROWS*0,y
         
         lda temp
         and #$0C
@@ -968,7 +970,7 @@ LoadProcedural subroutine
         lsr
         tax
         jsr GetProcData
-        sta Dirt+NUM_DIRT_ROWS*2,y
+        sta dirt_array+NUM_DIRT_ROWS*2,y
 
       	cpy #NUM_DIRT_ROWS-1
         bne .ProceduralLoop
@@ -992,7 +994,7 @@ LoadProcedural1 subroutine
         lsr
         tax
         jsr GetProcData
-       	sta Dirt+NUM_DIRT_ROWS*4,y
+       	sta dirt_array+NUM_DIRT_ROWS*4,y
         
         lda temp
         and #$C0
@@ -1002,11 +1004,11 @@ LoadProcedural1 subroutine
         pha
         tax
         jsr GetProcData
-        sta Dirt+NUM_DIRT_ROWS*5,y
+        sta dirt_array+NUM_DIRT_ROWS*5,y
         pla
         tax
         jsr GetHalfProcData
-        sta Dirt+NUM_DIRT_ROWS*3,y
+        sta dirt_array+NUM_DIRT_ROWS*3,y
         
       	cpy #NUM_DIRT_ROWS-1
         bne .ProceduralLoop
@@ -1089,7 +1091,7 @@ MoveJoystick0 subroutine
 .SkipMoveRight
 	stx p0_x_position
 ; Move Vertically
-	ldy MissileY0
+	ldy m0_y_position
         lda #%00010000	;Up?
         bit SWCHA
         bne .SkipMoveUp
@@ -1106,7 +1108,7 @@ MoveJoystick0 subroutine
         iny
         iny
 .SkipMoveDown
-        sty MissileY0  
+        sty m0_y_position  
         
 	rts    
     
@@ -1134,7 +1136,7 @@ MoveJoystick1 subroutine
 	stx p1_x_position
         
 ; Move Vertically
-	ldy MissileY1
+	ldy m1_y_position
         lda #$01	;Up?
         bit SWCHA
         bne .SkipMoveUp
@@ -1151,7 +1153,7 @@ MoveJoystick1 subroutine
         iny
         iny
 .SkipMoveDown
-        sty MissileY1   
+        sty m1_y_position   
         
 	rts
 
@@ -1170,21 +1172,21 @@ AnimatePlayer0 subroutine
         bcs .SetFrame2
         
         lda #<Frame1
-        sta SpritePtr0
+        sta p0_sprite_ptr
         lda #>Frame1
-        sta SpritePtr0+1
+        sta p0_sprite_ptr+1
         jmp .return
 .SetFrame2
  	lda #<Frame2
-        sta SpritePtr0
+        sta p0_sprite_ptr
         lda #>Frame2
-        sta SpritePtr0+1
+        sta p0_sprite_ptr+1
 	jmp .return
 .idle
 	lda #<Frame0
-        sta SpritePtr0
+        sta p0_sprite_ptr
         lda #>Frame0
-        sta SpritePtr0+1
+        sta p0_sprite_ptr+1
 .return   
         rts
         
@@ -1203,21 +1205,21 @@ AnimatePlayer1 subroutine
         bcs .SetFrame2
         
         lda #<Frame1
-        sta SpritePtr1
+        sta p1_sprite_ptr
         lda #>Frame1
-        sta SpritePtr1+1
+        sta p1_sprite_ptr+1
         jmp .return
 .SetFrame2
  	lda #<Frame2
-        sta SpritePtr1
+        sta p1_sprite_ptr
         lda #>Frame2
-        sta SpritePtr1+1
+        sta p1_sprite_ptr+1
 	jmp .return
 .idle
 	lda #<Frame0
-        sta SpritePtr1
+        sta p1_sprite_ptr
         lda #>Frame0
-        sta SpritePtr1+1
+        sta p1_sprite_ptr+1
 .return   
         rts
 
@@ -1253,7 +1255,7 @@ DivideLoop
 
 GameReset subroutine 
 	lda #MAX_WIN_FRAMES
-        sta WinFrameCounter
+        sta win_frame_counter
         
         lda area_bk_colour
         sta bk_colour
@@ -1266,24 +1268,24 @@ GameReset subroutine
         
         lda #%10000000
         ; Set Missiles off? 
-        sta MissileVel0
-        sta MissileVel1
+        sta m0_velocity
+        sta m1_velocity
         
         ; Set Reticles to centre
         lda #RETICLE_START
-        sta MissileY0
-        sta MissileY1
+        sta m0_y_position
+        sta m1_y_position
         
         ; Initial Player and missile X positions
         ; Player 0
        	lda #P0_START_POSITION
         sta p0_x_position
-        sta MissileX0
+        sta m0_x_position
         
         ; Player 1
         lda #P1_START_POSITION
         sta p1_x_position
-        sta MissileX1
+        sta m1_x_position
 
 	rts
         
@@ -1292,24 +1294,22 @@ GameReset subroutine
         
 SetUpPtrs subroutine
 	lda #<Frame0
-        sta SpritePtr0
-        lda #>Frame0
-        sta SpritePtr0+1
+        sta p0_sprite_ptr
+        sta p1_sprite_ptr
         
-        lda #<Frame0
-        sta SpritePtr1
         lda #>Frame0
-        sta SpritePtr1+1
+        sta p0_sprite_ptr+1
+        sta p1_sprite_ptr+1
         
         lda #<ColourPlayer0
-        sta ColourPtr0
+        sta p0_colour_ptr
         lda #>ColourPlayer0
-        sta ColourPtr0+1
+        sta p0_colour_ptr+1
           
         lda #<ColourPlayer1
-        sta ColourPtr1
+        sta p1_colour_ptr
         lda #>ColourPlayer1
-        sta ColourPtr1+1
+        sta p1_colour_ptr+1
         
         rts
    
