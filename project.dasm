@@ -315,11 +315,6 @@ Set_P1_Missile_Colour
 	
         TIMER_SETUP 192
         jsr DrawScoreboard
-        ldy #7
-.buffer 
-        sta WSYNC
-        dey
-        bne .buffer
         
         lda bk_colour
         sta COLUBK
@@ -755,6 +750,10 @@ ScanLoop1a
         ; Turn playfield reflection off (and turn score mode off)
         lda #%00000000
         sta CTRLPF
+        
+        ldx #7
+        jsr BufferWSYNC
+        
         rts
 
         
@@ -1318,10 +1317,7 @@ GameReset subroutine
         sta m1_x_position
 
 	rts
-        
-
-        
-        
+         
 SetUpPtrs subroutine
 	lda #<Frame0
         sta p0_sprite_ptr
@@ -1387,6 +1383,17 @@ ProcessSound subroutine
 	dex
         beq .soundChnl
 .return
+	rts
+        
+; X - contains the number of scanlines to wait        
+BufferWSYNC subroutine
+	txa
+        beq .none
+.loop
+	sta WSYNC
+        dex 
+        bne .loop
+.none
 	rts
         
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
