@@ -104,6 +104,12 @@ PLAYER_1_SPRITE 	equ #1
 MISSILE_0_SPRITE 	equ #2
 MISSILE_1_SPRITE	equ #3
 
+PLAYER_OFF		equ #0
+CLEAR_PLAYFIELD		equ #0
+MISSILE_OFF		equ #0
+MISSILE_ON		equ #2
+
+SCOREBOARD_BACKGROUND_COLOUR equ #$00
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Code segment
@@ -177,14 +183,13 @@ Start
          
         ; Set horizontal positions 
         lda p0_x_position
-        ldx #0
+        ldx #PLAYER_0_SPRITE
         jsr SetHorizPos
         
         lda p1_x_position
-        ldx #1
+        ldx #PLAYER_1_SPRITE
         jsr SetHorizPos
         
-        ldx #1
         sta WSYNC
         sta HMOVE
 
@@ -223,7 +228,7 @@ Setup_Scoreboard
         jsr GetBCDBitmap
         
         ; Setup background colour and scoremode ready for scoreboard
-        lda #$00
+        lda #SCOREBOARD_BACKGROUND_COLOUR
         sta COLUBK
         
         lda #0
@@ -314,16 +319,22 @@ Set_P1_Missile_Colour
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
 	
         TIMER_SETUP 192
+        
+        
         jsr DrawScoreboard
         
+Load_Area_Colours
         lda bk_colour
         sta COLUBK
         lda area_dirt_colour
         sta COLUPF
-                
+        
+Turn_Off_Player_Sprites
         lda #0
         sta GRP0
         sta GRP1
+        
+Load_Missile_Colours
         lda m0_colour
         sta COLUP0
         lda m1_colour
@@ -331,81 +342,96 @@ Set_P1_Missile_Colour
         
         sta WSYNC
                 
-        ; PLAYFIELD GRAPHICS LOOP
-        ; ------------------
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;        
+; DIRT GRAPHICS LOOP
+; Dirt is made up of blocks with a height (number of scanlines/2).
+; The inner loop is repeated until all scanlines have been drawn.
+; Once the complete height of a block is draw, the next row is begins to be drawn
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         
         ; Y contains the dirt row we are on.
         ; X contains the scanline we are on.
         
-        ldy #$ff ; Start at -1 ; 
-        ldx #$ff
-DrawLoop
+        ldy #$ff ; Start at -1 ; will immediately increment to 0  
+        ldx #$ff ; Incremented every scanline
+Draw_Dirt_Loop
         iny 			; Go to next brick row 
         lda #DIRT_HEIGHT
         sta dirt_height_counter
         cpy #NUM_DIRT_ROWS
-        bcs DoneDirtDraw
+        bcs Draw_Dirt_Done
         
         
-.innerLoop
+.inner_loop
 	
-        ; Enable missiles
-        ; -------------------
+; Enable missiles
+; -------------------
 	
 	inx			; increment scanline counter
         stx temp
         sta WSYNC
         
-        lda #0			
+; Clear Playfield registers 
+        lda #CLEAR_PLAYFIELD			
         sta PF0
         sta PF1                        
         sta PF2
         
-        lda m0_velocity
-        bmi .DrawReticle0	
+Draw_Missile_0
+	; Is button held down? 
+        lda m0_velocity	
+        bmi .draw_reticle_0	
         
+        ; Button is held down, draw water up to missile position
         lda m0_y_position
-        cmp temp		; If the scanline is more than the Missile Y, disable the missile				
-        bcc .EnableMissile0
-	jmp .DisableMissile0
-.DrawReticle0
+        cmp temp		; disable missile if scanline more than missile Y				
+        bcc .enable_missile_0
+        beq .enable_missile_0
+	jmp .disable_missile_0
+.draw_reticle_0
 	lda m0_y_position
         cmp temp		
-        beq .EnableMissile0		
-.DisableMissile0
-        lda #0
-        jmp .Finish0
-.EnableMissile0
-	lda #2
-.Finish0
+        beq .enable_missile_0		
+.disable_missile_0
+        lda #MISSILE_OFF
+        jmp .finish_0
+.enable_missile_0
+	lda #MISSILE_ON
+.finish_0
 	sta ENAM0
             
-                
+Draw_Missile_1
+	; Is button held down? 
         lda m1_velocity
-        bmi .DrawReticle1
+        bmi .draw_reticle_1
         
+        ; Button is held down, draw water up to missile position
         lda m1_y_position
-        cmp temp		; If the scanline is more than the Missile Y, disable the missile				
-        bcc .EnableMissile1
-	jmp .DisableMissile1
-.DrawReticle1
+        cmp temp		; disable missile if scanline more than missile Y				
+        bcc .enable_missile_1
+        beq .enable_missile_1
+	jmp .disable_missile_1
+.draw_reticle_1
 	lda m1_y_position
         cmp temp		
-        beq .EnableMissile1		
-.DisableMissile1
-        lda #0
-        jmp .Finish1
-.EnableMissile1
-	lda #2
-.Finish1
+        beq .enable_missile_1		
+.disable_missile_1
+        lda #MISSILE_OFF
+        jmp .finish_1
+.enable_missile_1
+	lda #MISSILE_ON
+.finish_1
 	sta ENAM1	
-        			              
+        
+        ; DO NOT DRAW DIRT IN BUFFER ZONE
         cpx #DIRT_Y_START
-        bmi .innerLoop		
+        bmi .inner_loop		
                            	
         
-        ; Next Scanline - draw playfield data - Originally by Steven Hugg
-        ; -----------------------------------
+; Next Scanline - 
+; Draw playfield data - Originally by Steven Hugg
+; -----------------------------------
+        
         sta WSYNC
         dec dirt_height_counter	
         
@@ -427,18 +453,18 @@ DrawLoop
         lda dirt_array+NUM_DIRT_ROWS*4,y
         sta PF1
         lda dirt_array+NUM_DIRT_ROWS*5,y
-        sta PF2			 ; 21 machine cycles 
-        			 ; TOTAL for PFx is 42 machine cycles. 76 - 42 machine cycles = 34	 
+        sta PF2			  
+        			 	 
         
         lda dirt_height_counter
-        bne .innerLoop
-        beq DrawLoop		 ; Total 55 machine cycles used here, 21 machine cycles free 
+        bne .inner_loop
+        beq Draw_Dirt_Loop		
 
-DoneDirtDraw 
+Draw_Dirt_Done 
 	sta WSYNC
         
         ; Turn off missiles and playfield data
-  	lda #0
+  	lda #CLEAR_PLAYFIELD ; MISSILE_OFF
         sta PF0
         sta PF1
         sta PF2
@@ -450,7 +476,7 @@ DoneDirtDraw
         
         lda #SPRITE_HEIGHT
         sta temp
-DrawSpriteLoop
+Draw_Sprite_Loop
 	ldy temp
         
         lda (p0_colour_ptr),y	; Colour for both lines
@@ -477,14 +503,14 @@ DrawSpriteLoop
         lda temp 
         sta WSYNC
         
-        bne DrawSpriteLoop
+        bne Draw_Sprite_Loop
         
         lda #FLOOR_COLOUR
         sta COLUBK
         
         ; TURN OFF PLAYER SPRITES 
         
-        lda #0
+        lda #PLAYER_OFF
         sta GRP0
         sta GRP1
      
@@ -556,6 +582,11 @@ DrawSpriteLoop
         
         TIMER_WAIT
 ; total = 262 lines, go to next frame
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;	          END OVERSCAN
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
         jmp NextFrame
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
