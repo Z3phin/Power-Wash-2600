@@ -71,27 +71,38 @@ p1_sprite_ptr		.word
 font_buffer 		ds 10
 
 ; Dirt (column major)
-dirt_array		ds 72	; 6x12 bytes (Dirt map)
+dirt_array		ds 72	; 6x12 bytes (PF1-PF2-PF3-PF1-PF2-PF3)
 
 ; Constants 
-SPRITE_HEIGHT 	equ #21
-PLAYER_0_COLOUR equ $94
-PLAYER_1_COLOUR equ $42
-FLOOR_COLOUR	equ $04
+SPRITE_HEIGHT 		equ #21
+PLAYER_0_COLOUR 	equ $94
+PLAYER_1_COLOUR 	equ $42
+FLOOR_COLOUR		equ $04
 
 P0_START_POSITION	equ #40
 P1_START_POSITION	equ #112
-RETICLE_START	equ #70
+RETICLE_START		equ #70
 
-MAX_WIN_FRAMES 	equ #150
+MAX_WIN_FRAMES 		equ #150	
 
-DIRT_HEIGHT	equ #4	; Height of each dirt spot in 2xScanlines
-NUM_DIRT_ROWS	equ #12	; Number of dirt rows 
-NDR		equ NUM_DIRT_ROWS
-DIRT_Y_START	equ #32 
+DIRT_HEIGHT		equ #4	; Height of each dirt spot in 2xScanlines
+NUM_DIRT_ROWS		equ #12	; Number of dirt rows 
+NDR			equ NUM_DIRT_ROWS
+DIRT_Y_START		equ #32 
 
-NUM_AREAS	equ #4
+NUM_AREAS		equ #4
 
+RETICLE_OFFSET		equ #4
+
+RETICLE_SIZE 		equ #%00011000
+WATER_SIZE		equ #0
+
+WATER_COLOUR    	equ #$af
+
+PLAYER_0_SPRITE 	equ #0
+PLAYER_1_SPRITE 	equ #1
+MISSILE_0_SPRITE 	equ #2
+MISSILE_1_SPRITE	equ #3
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -190,6 +201,10 @@ NextFrame
 	VERTICAL_SYNC
         
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;	       END VERTICAL SYNC
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+        
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;	         VERTICAL BLANK
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         
@@ -198,83 +213,89 @@ NextFrame
         
         jsr ProcessSound
         
-       	; Setup the scores ready for display  
+       	; Setup the scores ready for display
+Setup_Scoreboard
         lda score_0
         ldx #0
         jsr GetBCDBitmap
         lda score_1
         ldx #5
         jsr GetBCDBitmap
-          
-        ; Set the horizontal position of players
-        lda p0_x_position
-        ldx #0
-        jsr SetHorizPos
         
-        lda p1_x_position
-        ldx #1
-        jsr SetHorizPos
-        
-        ; Offset the missile0 to the center of sprite0
-        lda p0_x_position
-        clc
-        adc #4	; Offset
-        ldx #2
-        jsr SetHorizPos
-        
-        ; Offset the missile1 to the center of sprite1
-        lda p1_x_position
-        clc
-        adc #4	; Offset
-        ldx #3
-        jsr SetHorizPos
-        
-	; Setup background colour and scoremode ready for scoreboard
+        ; Setup background colour and scoremode ready for scoreboard
         lda #$00
         sta COLUBK
         
         lda #0
         sta CTRLPF	; Symmetry
         
+; Set the horizontal position of players
+Set_Player_Positions
+        lda p0_x_position
+        ldx #PLAYER_0_SPRITE
+        jsr SetHorizPos
+
+        lda p1_x_position
+        ldx #PLAYER_1_SPRITE
+        jsr SetHorizPos
         
-        ; Make the missile big if it is Reticle Mode for player 0
+; Offset the missile0 to the center of sprite0
+Set_Missile_Positions
+        lda p0_x_position
+        clc
+        adc #RETICLE_OFFSET	; Offset
+        ldx #MISSILE_0_SPRITE
+        jsr SetHorizPos
+        
+        ; Offset the missile1 to the center of sprite1
+        lda p1_x_position
+        clc
+        adc #RETICLE_OFFSET
+        ldx #MISSILE_1_SPRITE
+        jsr SetHorizPos
+        
+; Make the missile big if it is Reticle Mode for player 0
+Set_P0_Missile_Size
         lda m0_velocity
-        bmi CursorSize0
-        lda #0
-        jmp StoreSize0
-CursorSize0
-	lda #%000011000
-StoreSize0
+        bmi .enable_cursor_size_0
+        lda #WATER_SIZE
+        jmp .store_cursor_size_0
+.enable_cursor_size_0
+	lda #RETICLE_SIZE
+.store_cursor_size_0
 	sta NUSIZ0
 
-	; Make the missile big if it is Reticle Mode for player 1
+; Make the missile big if it is Reticle Mode for player 1
+Set_P1_Missile_Size
         lda m1_velocity
-        bmi CursorSize1
-        lda #0
-        jmp StoreSize1
-CursorSize1
-	lda #%00011000
-StoreSize1
+        bmi .enable_cursor_size_1
+        lda #WATER_SIZE
+        jmp .store_cursor_size_1
+.enable_cursor_size_1
+	lda #RETICLE_SIZE
+.store_cursor_size_1
 	sta NUSIZ1
         
-        ; Recolour missile for either Reticle Mode or Stream Mode
+; Recolour missile for either Reticle Mode or Stream Mode
+Set_P0_Missile_Colour
         lda m0_velocity
-        bmi ReticleColour0
-        lda #$af 
-        jmp StoreColour0
-ReticleColour0
+        bmi .enable_reticle_colour_0
+        lda #WATER_COLOUR
+        jmp .store_missile_colour_0
+.enable_reticle_colour_0
 	lda #PLAYER_0_COLOUR
-StoreColour0
+.store_missile_colour_0
 	sta m0_colour
         
-        ; Recolour missile for either Reticle Mode or Stream Mode
+; Recolour missile for either Reticle Mode or Stream Mode
+Set_P1_Missile_Colour
         lda m1_velocity
-        bmi ReticleColour1
-        lda #$af 
-        jmp StoreColour1
-ReticleColour1
+        bmi .enable_reticle_colour_1
+        lda #WATER_COLOUR
+        jmp .store_missile_colour_1
+.enable_reticle_colour_1
 	lda #PLAYER_1_COLOUR
-StoreColour1
+.store_missile_colour_1
 	sta m1_colour
         
         
@@ -283,9 +304,13 @@ StoreColour1
        
         TIMER_WAIT
 ; 192 lines of frame
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;	      END VERTICAL BLANK
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;	            DRAWING
+;	        MAIN DRAWING
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
 	
         TIMER_SETUP 192
@@ -472,6 +497,11 @@ DrawSpriteLoop
         TIMER_WAIT
 
 ; 29 lines of overscan
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;	       END MAIN DRAWING
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;	            OVERSCAN
