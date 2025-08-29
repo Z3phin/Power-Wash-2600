@@ -77,6 +77,8 @@ dirt_array		ds 72	; 6x12 bytes (PF0-PF1-PF2-PF0-PF1-PF2)
 SPRITE_HEIGHT 		equ #21
 PLAYER_0_COLOUR 	equ $94
 PLAYER_1_COLOUR 	equ $42
+PLAYER_0_WIN_COLOUR	equ $97
+PLAYER_1_WIN_COLOUR	equ $40
 FLOOR_COLOUR		equ $04
 
 P0_START_POSITION	equ #40
@@ -592,7 +594,7 @@ Game_Won_Overscan
         ldy #START_WIN_SOUND
         ldx #AUDIO_CHANNEL_1
         jsr PlaySound
-        jsr GameWin
+        jsr WinAnimation
         jmp End_Frame      
 
 .play_middle_win_sound
@@ -601,14 +603,14 @@ Game_Won_Overscan
         ldy #MIDDLE_WIN_SOUND
         ldx #AUDIO_CHANNEL_1
         jsr PlaySound
-        jsr GameWin
+        jsr WinAnimation
         jmp End_Frame 
 
 .play_end_win_sound
         ldy #END_WIN_SOUND
         ldx #AUDIO_CHANNEL_1
         jsr PlaySound
-	jsr GameWin
+	jsr WinAnimation
         jmp End_Frame
 
 
@@ -668,7 +670,7 @@ Normal_Overscan
 ; 	  Subroutines
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-GameWin subroutine
+WinAnimation subroutine
 
 	lda win_frame_counter
         lsr	; SLOW DOWN ANIMATION
@@ -678,36 +680,44 @@ GameWin subroutine
         lsr	;
         lsr	; SLOW DOWN ANIMATION
         
-        bcs .PlayerBK
+        ; Should background change colour? 
+        bcs .change_background_colour
+        
+        ; No, store current background colour
         lda area_bk_colour
         sta bk_colour
-        jmp .EndChangeColour
-.PlayerBK        
+        dec win_frame_counter
+	rts
+        
+.change_background_colour        
         lda score_0
         cmp score_1
-        bcc .Player1Win
-        bcs .Player0Win
-  	jmp .EndChangeColour
-.Player1Win
-        lda #PLAYER_1_COLOUR-3
+        beq .draw
+        bcc .player_1_win
+        
+.player_0_win
+        lda #PLAYER_0_WIN_COLOUR
         sta bk_colour
-        jmp .EndChangeColour
-.Player0Win
-        lda #PLAYER_0_COLOUR+3
+        dec win_frame_counter
+	rts
+        
+.player_1_win
+        lda #PLAYER_1_WIN_COLOUR
         sta bk_colour
-.EndChangeColour
+.draw
         dec win_frame_counter
 	rts
         
 NewRound subroutine
 	inc area_index
+        
+        ; Should area index reset to zero after reaching max?
         lda area_index
         cmp #NUM_AREAS
-        bne .noResetArea
+        bne .load_area_colours
         lda #0
         sta area_index
-.noResetArea
-	lda area_index
+.load_area_colours
         tax
         lda DirtColours,x
         sta area_dirt_colour
@@ -716,6 +726,7 @@ NewRound subroutine
         
         jsr GameReset	
         rts
+
 
 
 ; x - contains the player missile and player score to add to
