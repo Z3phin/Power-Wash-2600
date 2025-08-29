@@ -1143,44 +1143,48 @@ LoadRightProcedural subroutine
 ; Y contains row index (0-11)
 ; A will contain output
 GetProcData subroutine
-        bne .next1
+        bne .index_1
         lda ProcData+NUM_DIRT_ROWS*0,y
-        jmp .load
-.next1
+        rts
+        
+.index_1
         dex
-        bne .next2
+        bne .index_2
         lda ProcData+NUM_DIRT_ROWS*1,y
-        jmp .load
-.next2	
+        rts
+        
+.index_2	
         dex
-        bne .next3
+        bne .index_3
 	lda ProcData+NUM_DIRT_ROWS*2,y
-        jmp .load
-.next3
+        rts 
+        
+.index_3
       	lda ProcData+NUM_DIRT_ROWS*3,y
-.load   
         rts
         
 ; X contains ProcData index (0,1,2,3)
 ; Y contains row index (0-11)
 ; A will contain output
 GetHalfProcData subroutine
-        bne .next1
+        bne .index_1
         lda HalfProcData+NUM_DIRT_ROWS*0,y
-        jmp .load
-.next1
+        rts
+        
+.index_1
         dex
-        bne .next2
+        bne .index_2
         lda HalfProcData+NUM_DIRT_ROWS*1,y
-        jmp .load
-.next2	
+        rts
+        
+.index_2	
         dex
-        bne .next3
+        bne .index_3
 	lda HalfProcData+NUM_DIRT_ROWS*2,y
-        jmp .load
-.next3
-      	lda HalfProcData+NUM_DIRT_ROWS*3,y
-.load    
+        rts
+        
+.index_3
+      	lda HalfProcData+NUM_DIRT_ROWS*3,y   
         rts
 	
 	
