@@ -137,6 +137,8 @@ PLAYFIELD_MODE_RESET	equ #%00000000
 SCORE_DIGIT_HEIGHT 	equ #10
 SCORE_BUFFER_HEIGHT	equ #7
 
+PF0_MASK		equ #$F0
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Code segment
 
@@ -944,33 +946,33 @@ NoBrickFound
 ; Returns a negative number if not all clean 
 TestAllClean subroutine	
 	ldx #$FF
-.CheckRow
+.check_row
 	inx
 	lda dirt_array+NUM_DIRT_ROWS*0,x
-        and #$F0
-        bne .NotClean
+        and #PF0_MASK
+        bne .not_clean
         
         lda dirt_array+NUM_DIRT_ROWS*1,x
-        bne .NotClean
+        bne .not_clean
         
         lda dirt_array+NUM_DIRT_ROWS*2,x
-        bne .NotClean
+        bne .not_clean
         
         lda dirt_array+NUM_DIRT_ROWS*3,x
-        and #$F0
-        bne .NotClean
+        and #PF0_MASK
+        bne .not_clean
         
         lda dirt_array+NUM_DIRT_ROWS*4,x
-        bne .NotClean
+        bne .not_clean
         
         lda dirt_array+NUM_DIRT_ROWS*5,x
-        bne .NotClean
+        bne .not_clean
         
         cpx #NUM_DIRT_ROWS-1
-        bne .CheckRow
+        bne .check_row
         rts
-.NotClean
-	lda #$FF
+.not_clean
+	lda #$FF ;-1
         rts
         
         
