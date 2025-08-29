@@ -109,6 +109,20 @@ CLEAR_PLAYFIELD		equ #0
 MISSILE_OFF		equ #0
 MISSILE_ON		equ #2
 
+AUDIO_CHANNEL_0		equ #0
+AUDIO_CHANNEL_1		equ #1
+MUTE_VOLUME 		equ #0
+
+START_WIN_SOUND 	equ #6
+MIDDLE_WIN_SOUND	equ #7
+END_WIN_SOUND		equ #7
+
+LAST_ANIMATION_FRAME    equ #3
+LAST_START_SOUND_FRAME	equ #100
+LAST_MIDDLE_SOUND_FRAME equ #70
+
+
+
 SCOREBOARD_BACKGROUND_COLOUR equ #$00
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -531,7 +545,7 @@ Draw_Sprite_Loop
 	TIMER_SETUP 29
         
         LDA is_game_won
-        BNE Game_Won_Overscan	;
+        BNE Game_Won_Overscan	; 
         JMP Normal_Overscan	; Both will JMP to End_Frame 
 End_Frame
 	INC frame_counter
@@ -543,50 +557,61 @@ End_Frame
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 Game_Won_Overscan
-	lda #0
+	lda #MUTE_VOLUME
         sta AUDV1
 	
+        ; Has the win animation completed? 
 	lda win_frame_counter
-        bne .noReset
+        bne .animation_not_complete
+        
+        ; Win animation IS complete, begin next round
         jsr NewRound
-        jmp .next
-.noReset
-        cmp #2
-        bne .noLoad
-        ldx #0
-        jsr LoadDirt
-        dec win_frame_counter
-        jmp .next
-.noLoad 
-	cmp #1
-        bne .noLoad1
-        ldx #1
-        jsr LoadDirt
-        dec win_frame_counter
-        jmp .next
-.noLoad1
-        cmp #100
-        bcc .skipSound0
-        ldy #6
-        ldx #1
-        jsr PlaySound
-        jmp .endofsound
-.skipSound0
-	cmp #70
-        bcc .skipSound1
-        ldy #7
-        ldx #1
-        jsr PlaySound
-        jmp .endofsound
-.skipSound1
-        ldy #8
-        ldx #1
-        jsr PlaySound
-.endofsound
-	jsr GameWin
-.next
         jmp End_Frame
-	;------------
+
+	; Win animation NOT completed
+        ; A - contains win_frame_counter (decreases)
+.animation_not_complete
+        ; Is animation on the last few frames? 
+        cmp #LAST_ANIMATION_FRAME
+        bcs .continue_animation
+        
+        ; Animation nearing end, begin loading dirt again (frames 1 and 2)
+        ; 	split due to procedural calculation time
+.load_dirt
+        tax
+        dex
+        jsr LoadDirt
+        dec win_frame_counter
+        jmp End_Frame
+                 
+.continue_animation
+        cmp #LAST_START_SOUND_FRAME
+        bcc .play_middle_win_sound
+        
+.play_start_win_sound
+        ldy #START_WIN_SOUND
+        ldx #AUDIO_CHANNEL_1
+        jsr PlaySound
+        jsr GameWin
+        jmp End_Frame      
+
+.play_middle_win_sound
+	cmp #LAST_MIDDLE_SOUND_FRAME
+        bcc .play_end_win_sound
+        ldy #MIDDLE_WIN_SOUND
+        ldx #AUDIO_CHANNEL_1
+        jsr PlaySound
+        jsr GameWin
+        jmp End_Frame 
+
+.play_end_win_sound
+        ldy #END_WIN_SOUND
+        ldx #AUDIO_CHANNEL_1
+        jsr PlaySound
+	jsr GameWin
+        jmp End_Frame
+
+
 
 Normal_Overscan 
 	lda m0_velocity
@@ -646,12 +671,13 @@ Normal_Overscan
 GameWin subroutine
 
 	lda win_frame_counter
-        lsr
-        lsr
-        lsr
-        lsr
-        lsr
-        lsr
+        lsr	; SLOW DOWN ANIMATION
+        lsr	;
+        lsr	;
+        lsr	;
+        lsr	;
+        lsr	; SLOW DOWN ANIMATION
+        
         bcs .PlayerBK
         lda area_bk_colour
         sta bk_colour
@@ -1371,15 +1397,19 @@ SetUpPtrs subroutine
         rts
    
 ; Credit to 8Blit - Atari 2600 Game Programming
+; Y contains the sound to play
+; X contains the audio channel to play on (0 or 1)
 PlaySound subroutine 
+	; Is audio muted (P1 to Expert mode)
 	lda SWCHB
         asl  
-        bmi .nomute
-        lda #0
+      	bmi .not_mute
+        lda #MUTE_VOLUME
         sta AUDV0
         sta AUDV1
-        jmp .return
-.nomute
+        rts
+        
+.not_mute
 	lda SoundType,y
         sta AUDC0,x
         lda SoundVolume,y
@@ -1388,19 +1418,19 @@ PlaySound subroutine
         sta AUDF0,x
         lda SoundLength,y
         sta sound_channel_0,x 
-.return
         rts
         
 ProcessSound subroutine
+	; Is audio muted (P1 to Expert Mode)
 	lda SWCHB
         asl  
-        bmi .nomute
-        lda #0
+        bmi .not_mute
+        lda #MUTE_VOLUME
         sta AUDV0
         sta AUDV1
-        jmp .return
-.nomute
-	
+        rts
+        
+.not_mute
 	ldx #1
 .soundChnl
 	lda sound_channel_0,x
