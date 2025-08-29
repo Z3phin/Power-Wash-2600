@@ -139,6 +139,8 @@ SCORE_BUFFER_HEIGHT	equ #7
 
 PF0_MASK		equ #$F0
 
+COLOR_SWITCH		equ #%00001000
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Code segment
 
@@ -975,28 +977,32 @@ TestAllClean subroutine
 	lda #$FF ;-1
         rts
         
-        
-                
+; X - contains which half to load procedurally (0 = left, 1 = right)                       
 LoadDirt subroutine
-	lda #%00001000
+	lda #COLOR_SWITCH
         bit SWCHB
-        
         bne .procedural
+        
+        ; Is P2 difficulty expert? (is random mode selected)
         lda SWCHB
         bmi .random
+        
+        ; No, P2 is amateur
         jsr LoadFull
-        jmp .return
+        rts
+        ; Yes, P2 is expert
 .random
 	jsr LoadRandom
-        jmp .return
+        rts
+        
 .procedural
 	cpx #0
-    	bne .secondProc
-	jsr LoadProcedural
-        jmp .return
-.secondProc
-	jsr LoadProcedural1
-.return
+    	bne .second_procedural
+	jsr LoadLeftProcedural
+        rts
+        
+.second_procedural
+	jsr LoadRightProcedural
         rts
         
 LoadFull subroutine
@@ -1053,7 +1059,7 @@ LoadRandom subroutine
         sty random_num_index
         rts
         
-LoadProcedural subroutine
+LoadLeftProcedural subroutine
 	inc random_num_index
 	ldx random_num_index
         lda Draw_Dirt_Loop,x
@@ -1087,7 +1093,7 @@ LoadProcedural subroutine
        
 	rts
         
-LoadProcedural1 subroutine
+LoadRightProcedural subroutine
 	ldx random_num_index
         lda #%11000000 ;DrawLoop,x
         sta temp
