@@ -71,7 +71,7 @@ p1_sprite_ptr		.word
 font_buffer 		ds 10
 
 ; Dirt (column major)
-dirt_array		ds 72	; 6x12 bytes (PF1-PF2-PF3-PF1-PF2-PF3)
+dirt_array		ds 72	; 6x12 bytes (PF0-PF1-PF2-PF0-PF1-PF2)
 
 ; Constants 
 SPRITE_HEIGHT 		equ #21
@@ -530,12 +530,19 @@ Draw_Sprite_Loop
 
 	TIMER_SETUP 29
         
-        lda is_game_won
-        bne .gamewon
-        jsr NormalOverscan
-        jmp .next
-        
-.gamewon
+        LDA is_game_won
+        BNE Game_Won_Overscan	;
+        JMP Normal_Overscan	; Both will JMP to End_Frame 
+End_Frame
+	INC frame_counter
+        TIMER_WAIT
+	JMP NextFrame 		; -> back to beginning
+       
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;	          END OVERSCAN
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+Game_Won_Overscan
 	lda #0
         sta AUDV1
 	
@@ -577,23 +584,10 @@ Draw_Sprite_Loop
         jsr PlaySound
 .endofsound
 	jsr GameWin
-.next  
-        inc frame_counter
-        
-        TIMER_WAIT
-; total = 262 lines, go to next frame
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;	          END OVERSCAN
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-        jmp NextFrame
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; 					Subroutines
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-NormalOverscan subroutine
+.next
+        jmp End_Frame
+	
+Normal_Overscan 
 	lda m0_velocity
         bmi .noStream0
         
@@ -641,8 +635,12 @@ NormalOverscan subroutine
         jsr AnimatePlayer0
         jsr AnimatePlayer1
 .gamewon
-        rts
-        
+        jmp End_Frame
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; 	  Subroutines
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 GameWin subroutine
 
 	lda win_frame_counter
