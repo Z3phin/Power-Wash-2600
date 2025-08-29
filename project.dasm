@@ -115,6 +115,7 @@ AUDIO_CHANNEL_0		equ #0
 AUDIO_CHANNEL_1		equ #1
 MUTE_VOLUME 		equ #0
 
+ROW_CLEANED_SOUND 	equ #3
 POWER_WASHER_SOUND	equ #5
 START_WIN_SOUND 	equ #6
 MIDDLE_WIN_SOUND	equ #7
@@ -127,6 +128,8 @@ LAST_MIDDLE_SOUND_FRAME equ #70
 
 
 SCOREBOARD_BACKGROUND_COLOUR equ #$00
+
+MISSILE_PLAYFIELD_COLLISION equ #%11000000
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Code segment
@@ -734,11 +737,12 @@ NewRound subroutine
 MissileCollision subroutine
 	lda CXM0FB,x
         sta temp
-	lda #%11000000
+	lda #MISSILE_PLAYFIELD_COLLISION
         bit temp
-        beq .nocollision
+        bne .collision
+        rts
+        
 .collision
-
 	txa
         tay		; Move the player we are looking at into the Y register
         pha		; Save the contents of the X register
@@ -747,19 +751,26 @@ MissileCollision subroutine
         ldx x_positions,y	; X contains missile X coordinate
         
         jsr CleanDirt
-        bmi .nocollision2
-        
+        bpl .dirt_cleaned
+        pla 
+        tax
+        rts
+
+.dirt_cleaned
         pla
 	tax		; Load the player we are looking at into the X register		
 
+	; Add score if the whole row was cleaned
 	lda row_cleaned
-        bne .NoAddScore
-        
+        beq .add_score
+        rts
+
+.add_score
         txa 
         pha
         
-        ldy #3
-        ldx #0
+        ldy #ROW_CLEANED_SOUND
+        ldx #AUDIO_CHANNEL_0
         jsr PlaySound
         
         pla
@@ -772,13 +783,6 @@ MissileCollision subroutine
         adc #1	
         sta scores,x
         cld
-.NoAddScore
-        jmp .nocollision
-        
-.nocollision2
-	pla
-        tax
-.nocollision
 	rts
         ; end add one to score
         
