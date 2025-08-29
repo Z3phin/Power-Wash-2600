@@ -117,11 +117,11 @@ AUDIO_CHANNEL_0		equ #0
 AUDIO_CHANNEL_1		equ #1
 MUTE_VOLUME 		equ #0
 
-ROW_CLEANED_SOUND 	equ #3
-POWER_WASHER_SOUND	equ #5
-START_WIN_SOUND 	equ #6
-MIDDLE_WIN_SOUND	equ #7
-END_WIN_SOUND		equ #8
+ROW_CLEANED_SOUND 	equ #0
+POWER_WASHER_SOUND	equ #1
+START_WIN_SOUND 	equ #2
+MIDDLE_WIN_SOUND	equ #3
+END_WIN_SOUND		equ #4
 
 LAST_ANIMATION_FRAME    equ #3
 LAST_START_SOUND_FRAME	equ #100
@@ -1536,41 +1536,25 @@ DirtColours
   
 ; Credit to 8Blit - Atari 2600 Game Programming  
 SoundType
-	.byte #$0C
-        .byte #$02
-        .byte #$06
-        .byte #$06
-        .byte #$08
-        .byte #3
-        .byte #12
-        .byte #12
-        .byte #12
+        .byte #$06 ;0
+        .byte #3   ;1 
+        .byte #12  ;2 
+        .byte #12  ;3 
+        .byte #12  ;4 
 SoundVolume
-	.byte #$02
-        .byte #$06
         .byte #$04
-        .byte #$04
-        .byte #$02
         .byte #$01
         .byte #2
         .byte #2
         .byte #2
 SoundPitch
-	.byte #$0D
         .byte #$03
-        .byte #$09
-        .byte #$03
-        .byte #19
         .byte #13
         .byte #26
         .byte #19
         .byte #15
 SoundLength
-	.byte #$01
-        .byte #$08
         .byte #$03
-        .byte #$03
-        .byte #4
         .byte #4
         .byte #4
         .byte #4
