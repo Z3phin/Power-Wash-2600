@@ -1297,70 +1297,75 @@ MoveJoystick1 subroutine
         
 	rts
 
+P0_HORIZONTAL_INPUT	equ #%11000000
+
 AnimatePlayer0 subroutine
-        lda #$C0
+        lda #P0_HORIZONTAL_INPUT
 	and SWCHA
-        cmp #$C0
+        cmp #P0_HORIZONTAL_INPUT
         beq .idle
         
 	lda frame_counter
-        lsr
-        lsr
-        lsr
-        lsr
+        lsr	; Slow down animation
+        lsr	; |
+        lsr	; |
+        lsr	; V
        	
-        bcs .SetFrame2
-        
+        bcs .set_walking_frame_1
+.set_walking_frame_0
         lda #<Frame1
         sta p0_sprite_ptr
         lda #>Frame1
         sta p0_sprite_ptr+1
-        jmp .return
-.SetFrame2
- 	lda #<Frame2
-        sta p0_sprite_ptr
-        lda #>Frame2
-        sta p0_sprite_ptr+1
-	jmp .return
-.idle
-	lda #<Frame0
-        sta p0_sprite_ptr
-        lda #>Frame0
-        sta p0_sprite_ptr+1
-.return   
         rts
         
+.set_walking_frame_1
+ 	lda #<Frame2
+        sta p0_sprite_ptr
+        lda #>Frame2
+        sta p0_sprite_ptr+1
+	rts
+        
+.idle
+	lda #<Frame0
+        sta p0_sprite_ptr
+        lda #>Frame0
+        sta p0_sprite_ptr+1  
+        rts
+ 
+P1_HORIZONTAL_INPUT	equ #%00001100
+
 AnimatePlayer1 subroutine 
-        lda #$0C
+        lda #P1_HORIZONTAL_INPUT
 	and SWCHA
-        cmp #$0C
+        cmp #P1_HORIZONTAL_INPUT
         beq .idle
         
 	lda frame_counter
-        lsr
-        lsr
-        lsr
-        lsr
+	lsr	; Slow down animation
+        lsr	; |
+        lsr	; |
+        lsr	; V
        	
-        bcs .SetFrame2
-        
+        bcs .set_walking_frame_1
+.set_walking_frame_0        
         lda #<Frame1
         sta p1_sprite_ptr
         lda #>Frame1
         sta p1_sprite_ptr+1
-        jmp .return
-.SetFrame2
+        rts
+        
+.set_walking_frame_1
  	lda #<Frame2
         sta p1_sprite_ptr
         lda #>Frame2
         sta p1_sprite_ptr+1
-	jmp .return
+	rts
 .idle
 	lda #<Frame0
         sta p1_sprite_ptr
         lda #>Frame0
         sta p1_sprite_ptr+1
-.return   
         rts
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1377,9 +1382,9 @@ SetHorizPos subroutine
 	sta WSYNC	; start a new line
         bit 0		; waste 3 cycles
 	sec		; set carry flag
-DivideLoop
+.divide_loop
 	sbc #15		; subtract 15
-	bcs DivideLoop	; branch until negative
+	bcs .divide_loop; branch until negative
 	eor #7		; calculate fine offset
 	asl
 	asl
