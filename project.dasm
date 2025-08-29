@@ -115,9 +115,10 @@ AUDIO_CHANNEL_0		equ #0
 AUDIO_CHANNEL_1		equ #1
 MUTE_VOLUME 		equ #0
 
+POWER_WASHER_SOUND	equ #5
 START_WIN_SOUND 	equ #6
 MIDDLE_WIN_SOUND	equ #7
-END_WIN_SOUND		equ #7
+END_WIN_SOUND		equ #8
 
 LAST_ANIMATION_FRAME    equ #3
 LAST_START_SOUND_FRAME	equ #100
@@ -617,40 +618,40 @@ Game_Won_Overscan
 
 Normal_Overscan 
 	lda m0_velocity
-        bmi .noStream0
+        bmi .p0_not_firing
         
-        ldy #5
-        ldx #1
+        ldy #POWER_WASHER_SOUND
+        ldx #AUDIO_CHANNEL_1
         jsr PlaySound 
-        lda #0
         
- 	ldx #0
+ 	ldx #PLAYER_0_SPRITE
  	jsr MissileCollision
-.noStream0
-        ; Skip Collisions in Reticle Mode
+        
+.p0_not_firing
         lda m1_velocity
-        bmi .noStream1
+        bmi .p1_not_firing
         
-        ldy #5
-        ldx #1
-        jsr PlaySound  
-        lda #0
+        ldy #POWER_WASHER_SOUND
+        ldx #AUDIO_CHANNEL_1
+        jsr PlaySound 
         
-        ldx #1
+        ldx #PLAYER_1_SPRITE
         jsr MissileCollision
-.noStream1 
+.p1_not_firing 
 
 	; Clear Collisions
         sta CXCLR
         
         jsr TestAllClean
-        bmi .noWin
+        bmi .not_all_clean
+        
+        ; Indicate game is won and lock out input
         inc is_game_won
-        jmp .gamewon
+        jmp End_Frame
         
-.noWin
-        
+.not_all_clean
         ; Read Button Input for next frame
+.read_input        
         lda INPT4
 	sta m0_velocity
         
@@ -662,7 +663,7 @@ Normal_Overscan
         jsr MoveJoystick1
         jsr AnimatePlayer0
         jsr AnimatePlayer1
-.gamewon
+        
         jmp End_Frame
         ;------------
 
