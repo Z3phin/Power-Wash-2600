@@ -1490,19 +1490,18 @@ ProcessSound subroutine
         rts
         
 .not_mute
-	ldx #1
-.soundChnl
+	ldx #AUDIO_CHANNEL_1
+.sound_channel_loop
 	lda sound_channel_0,x
-        beq .soundDone
+        beq .sound_done
         dec sound_channel_0,x
-        bne .soundContinue
-        lda #0
+        bne .sound_continue
+        lda #MUTE_VOLUME
         sta AUDV0,x
-.soundDone
-.soundContinue
+.sound_done
+.sound_continue
 	dex
-        beq .soundChnl
-.return
+        beq .sound_channel_loop
 	rts
         
 ; X - contains the number of scanlines to wait        
