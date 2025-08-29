@@ -586,7 +586,8 @@ Game_Won_Overscan
 	jsr GameWin
 .next
         jmp End_Frame
-	
+	;------------
+
 Normal_Overscan 
 	lda m0_velocity
         bmi .noStream0
@@ -636,6 +637,7 @@ Normal_Overscan
         jsr AnimatePlayer1
 .gamewon
         jmp End_Frame
+        ;------------
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; 	  Subroutines
@@ -1004,7 +1006,7 @@ LoadRandom subroutine
 LoadProcedural subroutine
 	inc random_num_index
 	ldx random_num_index
-        lda #%11000000 ;DrawLoop,x
+        lda Draw_Dirt_Loop,x
         sta temp
         
         ldy #$FF
@@ -1291,7 +1293,7 @@ AnimatePlayer1 subroutine
 ;  X=2: missile 0
 ;  X=3: missile 1
 ;  X=4: ball
-SetHorizPos
+SetHorizPos subroutine
 	sta WSYNC	; start a new line
         bit 0		; waste 3 cycles
 	sec		; set carry flag
