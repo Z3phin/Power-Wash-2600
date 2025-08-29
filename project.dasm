@@ -79,6 +79,8 @@ PLAYER_0_COLOUR 	equ $94
 PLAYER_1_COLOUR 	equ $42
 PLAYER_0_WIN_COLOUR	equ $97
 PLAYER_1_WIN_COLOUR	equ $40
+PLAYER_0_SCORE_COLOUR	equ $98
+PLAYER_1_SCORE_COLOUR	equ $46
 FLOOR_COLOUR		equ $04
 
 P0_START_POSITION	equ #40
@@ -125,11 +127,15 @@ LAST_ANIMATION_FRAME    equ #3
 LAST_START_SOUND_FRAME	equ #100
 LAST_MIDDLE_SOUND_FRAME equ #70
 
-
-
 SCOREBOARD_BACKGROUND_COLOUR equ #$00
 
 MISSILE_PLAYFIELD_COLLISION equ #%11000000
+
+PLAYFIELD_SCORE_MODE	equ #%00010010
+PLAYFIELD_MODE_RESET	equ #%00000000
+
+SCORE_DIGIT_HEIGHT 	equ #10
+SCORE_BUFFER_HEIGHT	equ #7
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Code segment
@@ -794,15 +800,15 @@ MissileCollision subroutine
 DrawScoreboard subroutine
 	; Put playfield into score mode
         
-        lda #%00010010
+        lda #PLAYFIELD_SCORE_MODE
         sta CTRLPF
-        lda #$98   ; Slightly lighter colour than player0 sprite
+        lda #PLAYER_0_SCORE_COLOUR   ; Slightly lighter colour than player0 sprite
         sta COLUP0 ; left colour
-        lda #$46   ; Slightly lighter colour than player1 sprite		
+        lda #PLAYER_1_SCORE_COLOUR   ; Slightly lighter colour than player1 sprite		
         sta COLUP1 ; right colour	
         ; Draw digits
         ldy #0
-ScanLoop1a
+.draw_loop
         sta WSYNC ; 76
         tya
         lsr	   ; Divide Y by two for double-height lines 	
@@ -813,18 +819,18 @@ ScanLoop1a
         lda font_buffer+5,x
         sta PF1		; set right score bitmap
         iny
-        cpy #10
-        bcc ScanLoop1a
+        cpy #SCORE_DIGIT_HEIGHT
+        bcc .draw_loop
         
         ; Clear playfield
-        lda #0
+        lda #CLEAR_PLAYFIELD
         sta WSYNC
         sta PF1
         ; Turn playfield reflection off (and turn score mode off)
-        lda #%00000000
+        lda #PLAYFIELD_MODE_RESET
         sta CTRLPF
         
-        ldx #7
+        ldx #SCORE_BUFFER_HEIGHT
         jsr BufferWSYNC
         
         rts
