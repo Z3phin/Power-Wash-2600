@@ -137,9 +137,16 @@ PLAYFIELD_MODE_RESET	equ #%00000000
 SCORE_DIGIT_HEIGHT 	equ #10
 SCORE_BUFFER_HEIGHT	equ #7
 
-PF0_MASK		equ #$F0
+HALF_ROW		equ #$F0
+FULL_ROW		equ #$FF
 
 COLOR_SWITCH		equ #%00001000
+
+RIGHT_MOST_BITS		equ #%00000011
+RIGHT_MIDDLE_BITS	equ #%00001100
+LEFT_MOST_BITS		equ #%11000000
+LEFT_MIDDLE_BITS	equ #%00110000
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Code segment
@@ -951,7 +958,7 @@ TestAllClean subroutine
 .check_row
 	inx
 	lda dirt_array+NUM_DIRT_ROWS*0,x
-        and #PF0_MASK
+        and #HALF_ROW
         bne .not_clean
         
         lda dirt_array+NUM_DIRT_ROWS*1,x
@@ -961,7 +968,7 @@ TestAllClean subroutine
         bne .not_clean
         
         lda dirt_array+NUM_DIRT_ROWS*3,x
-        and #PF0_MASK
+        and #HALF_ROW
         bne .not_clean
         
         lda dirt_array+NUM_DIRT_ROWS*4,x
@@ -1007,36 +1014,36 @@ LoadDirt subroutine
         
 LoadFull subroutine
 	ldx #$FF	
-.FullLoop
+.row_loop
 	inx
-        lda #$F0
+        lda #HALF_ROW
         sta dirt_array+NUM_DIRT_ROWS*0,x
         sta dirt_array+NUM_DIRT_ROWS*3,x
         
-        lda #$FF
+        lda #FULL_ROW
         sta dirt_array+NUM_DIRT_ROWS*1,x
         sta dirt_array+NUM_DIRT_ROWS*2,x
         sta dirt_array+NUM_DIRT_ROWS*4,x
         sta dirt_array+NUM_DIRT_ROWS*5,x
         
         cpx #NUM_DIRT_ROWS-1
-        bne .FullLoop
+        bne .row_loop
         
         rts
         
 LoadRandom subroutine
 	ldx #$FF
         ldy random_num_index
-.randomLoop
+.row_loop
 	inx
 	
         lda NextFrame,y
-        and #$F0
+        and #HALF_ROW
         sta dirt_array+NUM_DIRT_ROWS*0,x
         
         iny
         lda NextFrame,y
-        and #$F0
+        and #HALF_ROW
         sta dirt_array+NUM_DIRT_ROWS*3,x
         
         iny
@@ -1054,7 +1061,7 @@ LoadRandom subroutine
         iny
         
         cpx #NUM_DIRT_ROWS-1
-        bne .randomLoop
+        bne .row_loop
         
         sty random_num_index
         rts
@@ -1066,11 +1073,11 @@ LoadLeftProcedural subroutine
         sta temp
         
         ldy #$FF
-.ProceduralLoop
+.row_loop
         iny
         
         lda temp
-        and #$03 
+        and #RIGHT_MOST_BITS 
         pha
         tax
         jsr GetProcData
@@ -1081,7 +1088,7 @@ LoadLeftProcedural subroutine
 	sta dirt_array+NUM_DIRT_ROWS*0,y
         
         lda temp
-        and #$0C
+        and #RIGHT_MIDDLE_BITS
         lsr
         lsr
         tax
@@ -1089,21 +1096,21 @@ LoadLeftProcedural subroutine
         sta dirt_array+NUM_DIRT_ROWS*2,y
 
       	cpy #NUM_DIRT_ROWS-1
-        bne .ProceduralLoop
+        bne .row_loop
        
 	rts
         
 LoadRightProcedural subroutine
 	ldx random_num_index
-        lda #%11000000 ;DrawLoop,x
+        lda Draw_Dirt_Loop,x
         sta temp
         
         ldy #$FF
-.ProceduralLoop
+.row_loop
         iny
         
 	lda temp
-        and #$30
+        and #LEFT_MIDDLE_BITS
         lsr
         lsr
         lsr
@@ -1113,7 +1120,7 @@ LoadRightProcedural subroutine
        	sta dirt_array+NUM_DIRT_ROWS*4,y
         
         lda temp
-        and #$C0
+        and #LEFT_MOST_BITS
         rol
         rol
         rol
@@ -1127,7 +1134,7 @@ LoadRightProcedural subroutine
         sta dirt_array+NUM_DIRT_ROWS*3,y
         
       	cpy #NUM_DIRT_ROWS-1
-        bne .ProceduralLoop
+        bne .row_loop
        
 	rts
 
