@@ -1197,44 +1197,52 @@ GetHalfProcData subroutine
 
 ; Player 0 Movement
 ; ----------------
+P0_LEFT_INPUT		equ #%01000000
+P0_RIGHT_INPUT		equ #%10000000
+P0_UP_INPUT		equ #%00010000
+P0_DOWN_INPUT		equ #%00100000
+LEFT_MOST_POSITION 	equ #1
+RIGHT_MOST_POSITION	equ #153
+UP_MOST_POSITION	equ #1
+DOWN_MOST_POSITION	equ #DIRT_Y_START+DIRT_HEIGHT*2*NUM_DIRT_ROWS	
 
 ; Read joystick movement and apply to object 0
 MoveJoystick0 subroutine
 ; Move horizontally
         ldx p0_x_position
-	lda #%01000000	;Left?	
+	lda #P0_LEFT_INPUT		
 	bit SWCHA
-	bne .SkipMoveLeft
-        cpx #1
-        bcc .SkipMoveLeft
+	bne .not_moving_left
+        cpx #LEFT_MOST_POSITION
+        bcc .not_moving_left
         dex
-.SkipMoveLeft
-	lda #%10000000	;Right?
+.not_moving_left
+	lda #P0_RIGHT_INPUT	
 	bit SWCHA 
-	bne .SkipMoveRight
-        cpx #153
-        bcs .SkipMoveRight
+	bne .not_moving_right
+        cpx #RIGHT_MOST_POSITION
+        bcs .not_moving_right
         inx
-.SkipMoveRight
+.not_moving_right
 	stx p0_x_position
 ; Move Vertically
 	ldy m0_y_position
-        lda #%00010000	;Up?
+        lda #P0_UP_INPUT	
         bit SWCHA
-        bne .SkipMoveUp
-        cpy #1
-        bcc .SkipMoveUp
+        bne .not_moving_up
+        cpy #UP_MOST_POSITION
+        bcc .not_moving_up
         dey
         dey
-.SkipMoveUp
-        lda #%00100000	;down?
+.not_moving_up
+        lda #P0_DOWN_INPUT	
         bit SWCHA
-        bne .SkipMoveDown
-        cpy #DIRT_Y_START+DIRT_HEIGHT*2*NUM_DIRT_ROWS
-        bcs .SkipMoveDown
+        bne .not_moving_down
+        cpy #DOWN_MOST_POSITION
+        bcs .not_moving_down
         iny
         iny
-.SkipMoveDown
+.not_moving_down
         sty m0_y_position  
         
 	rts    
@@ -1242,44 +1250,49 @@ MoveJoystick0 subroutine
         
 ; Player 1 Movement
 ; ----------------
+
+P1_LEFT_INPUT		equ #%00000100
+P1_RIGHT_INPUT		equ #%00001000
+P1_UP_INPUT		equ #%00000001
+P1_DOWN_INPUT		equ #%00000010
         
 MoveJoystick1 subroutine 
 ; Move horizontally
         ldx p1_x_position
-	lda #$04	;Left?
+	lda #P1_LEFT_INPUT	
 	bit SWCHA
-	bne .SkipMoveLeft
-        cpx #1		; Max Left
-        bcc .SkipMoveLeft
+	bne .not_moving_left
+        cpx #LEFT_MOST_POSITION			
+        bcc .not_moving_left
         dex
-.SkipMoveLeft
-	lda #$08	;Right?
+.not_moving_left
+	lda #P1_RIGHT_INPUT	
 	bit SWCHA 
-	bne .SkipMoveRight
-        cpx #153	; Max Right
-        bcs .SkipMoveRight
+	bne .not_moving_right
+        cpx #RIGHT_MOST_POSITION		
+        bcs .not_moving_right
         inx
-.SkipMoveRight
+.not_moving_right
 	stx p1_x_position
         
 ; Move Vertically
 	ldy m1_y_position
-        lda #$01	;Up?
+        lda #P1_UP_INPUT	
         bit SWCHA
-        bne .SkipMoveUp
-        cpy #1
-        bcc .SkipMoveUp
+        bne .not_moving_up
+        cpy #UP_MOST_POSITION
+        bcc .not_moving_up
         dey
         dey
-.SkipMoveUp
-        lda #$02	;down?
+.not_moving_up
+        lda #P1_DOWN_INPUT	
         bit SWCHA
-        bne .SkipMoveDown
-        cpy #DIRT_Y_START+DIRT_HEIGHT*2*NUM_DIRT_ROWS
-        bcs .SkipMoveDown
+        bne .not_moving_down
+        cpy #DOWN_MOST_POSITION
+        bcs .not_moving_down
         iny
         iny
-.SkipMoveDown
+.not_moving_down
         sty m1_y_position   
         
 	rts
