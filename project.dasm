@@ -73,6 +73,13 @@ font_buffer 		ds 10
 ; Dirt (column major)
 dirt_array		ds 72	; 6x12 bytes (PF0-PF1-PF2-PF0-PF1-PF2)
 
+
+shine 			equ (dirt_array)
+shine_direction 	equ (dirt_array)+1
+logo_bob_height 	equ (dirt_array)+2
+logo_bob_direction 	equ (dirt_array)+3
+logo_bob_timer 		equ (dirt_array)+4
+
 ; Constants 
 SPRITE_HEIGHT 		equ #21
 PLAYER_0_COLOUR 	equ $94
@@ -147,6 +154,14 @@ RIGHT_MIDDLE_BITS	equ #%00001100
 LEFT_MOST_BITS		equ #%11000000
 LEFT_MIDDLE_BITS	equ #%00110000
 
+BITMAP_HEIGHT		equ #82
+FOREGROUND_COLOUR 	equ #$08
+BACKGROUND_COLOUR 	equ #$A6
+SHINE_COLOUR		equ #$0E
+SHINE_TIMER_TARGET 	equ #15
+MAX_LOGO_BOB_HEIGHT	equ #192 - BITMAP_HEIGHT*2
+MIN_LOGO_BOB_HEIGHT	equ #0
+LOGO_BOB_TIMER_TARGET 	equ #1
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Code segment
@@ -155,11 +170,95 @@ LEFT_MIDDLE_BITS	equ #%00110000
         org $f000
         
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;	              START
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;	            Logo Start
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;        
 
 Start
 	CLEAN_START
+        
+	lda #0
+        sta logo_bob_timer
+        
+        lda #1
+        sta logo_bob_height
+       
+        lda #SHINE_COLOUR
+        sta shine
+        
+NextLogoFrame 
+       
+	VERTICAL_SYNC
+
+	TIMER_SETUP 37
+         
+        jsr StartLogoVBLANK
+        
+        TIMER_WAIT
+        
+        ldx logo_bob_height
+	jsr BufferWSYNC
+        
+	ldx #BITMAP_HEIGHT 	; Bitmap row (descending)
+        ldy #BITMAP_HEIGHT*2	; Scanline counter (descending)
+Logo_Loop
+; WSYNC and store playfield registers
+	sta WSYNC
+	lda LogoBitmap0,x
+        sta PF0		; store first playfield byte
+	lda LogoBitmap1,x
+        sta PF1		; store 2nd byte
+	lda LogoBitmap2,x
+        sta PF2		; store 3rd byte    
+        nop
+        nop
+        nop		; pause to let playfield finish drawing
+	lda LogoBitmap3,x
+        sta PF0		; store 4th byte
+	lda LogoBitmap4,x
+        sta PF1		; store 5th byte
+	lda LogoBitmap5,x
+        sta PF2		; store 6th byte
+        
+        dey	; Decrement scanline
+        tya 	; Y -> A 
+        lsr	; DIVIDE Y by 2 to get the bitmap row 
+        tax	; Store in X 
+        
+        ; ROW currently in A
+       	tya
+        bne Logo_Loop	; repeat until all scanlines drawn
+; Reset playfield
+	SLEEP 14	; give time to finish drawing scanline
+	lda #CLEAR_PLAYFIELD
+        sta PF0
+        sta PF1
+        sta PF2		; clear playfield
+        
+        lda #MAX_LOGO_BOB_HEIGHT
+        sec
+        sbc logo_bob_height
+        tax
+        jsr BufferWSYNC
+        
+	TIMER_SETUP 28
+        lda SWCHB	; test Game Reset switch
+        lsr
+        lsr 
+        bcc GameStart
+        
+        TIMER_WAIT
+        
+        jmp NextLogoFrame
+        
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;	              START
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+	org $F100 
+
+GameStart
+        
+        CLEAN_START
         
         ; Temporary setup of dirt
         ldx #0
@@ -190,6 +289,8 @@ Start
         lda #0
         sta score_0
         sta score_1
+        
+        sta random_num_index
         
         
         lda #%10000000
@@ -232,7 +333,7 @@ Start
 
 NextFrame
         lsr SWCHB	; test Game Reset switch
-        bcc Start	; reset?
+        bcc GameStart	; reset?
         
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;	         VERTICAL SYNC
@@ -1515,6 +1616,594 @@ BufferWSYNC subroutine
 .none
 	rts
         
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; 	    Logo Subroutines
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  
+
+CalculateShineDirection subroutine 
+	lda #SHINE_COLOUR
+        cmp shine
+        bne .not_shine
+        lda #-1
+        sta shine_direction
+.not_shine
+        lda #FOREGROUND_COLOUR 
+        cmp shine
+        bne .not_foreground
+        lda #1
+        sta shine_direction
+.not_foreground
+        
+        lda shine_direction
+        bmi .decrement
+        inc shine
+        rts
+       
+.decrement
+	dec shine
+	rts 
+        
+StartLogoVBLANK subroutine
+	; if shine == SHINE_COLOUR then shine_direction = -1 
+        ; else if shine == FOREGROUND_COLOUR then shine_direction = 1
+        ; else shine += shine_direction
+        
+
+	lda logo_bob_timer
+        cmp #LOGO_BOB_TIMER_TARGET
+        bne .continue_bob
+        lda #0
+        sta logo_bob_timer
+
+	lda #MAX_LOGO_BOB_HEIGHT
+        cmp logo_bob_height
+        bne .not_max
+        jsr CalculateShineDirection
+        lda #-1
+        sta logo_bob_direction
+.not_max
+	lda #MIN_LOGO_BOB_HEIGHT
+        cmp logo_bob_height
+        bne .not_min
+        jsr CalculateShineDirection
+        lda #1
+        sta logo_bob_direction
+.not_min
+	lda logo_bob_direction
+        bmi .dec_height
+        inc logo_bob_height
+        jmp .continue_bob
+.dec_height
+	dec logo_bob_height
+.continue_bob
+      
+; Set playfield foreground and background
+        lda #BACKGROUND_COLOUR
+        sta COLUBK
+        lda shine ; #FOREGROUND_COLOUR ;SHINE_COLOUR 
+        sta COLUPF
+        
+        inc logo_bob_timer
+
+	rts
+        
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; 	    Logo Bitmap Data
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+        
+	org $FC00
+        
+LogoBitmap0
+	.byte 0
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000 ; 20
+	.byte %10000000
+	.byte %10000000
+	.byte %10000000
+	.byte %10000000
+	.byte %11000000
+	.byte %11000000
+	.byte %11000000
+	.byte %11000000
+	.byte %11000000
+	.byte %11100000
+	.byte %11100000
+	.byte %11100000
+	.byte %11100000
+	.byte %11100000
+	.byte %11100000
+	.byte %11100000
+	.byte %11100000
+	.byte %11100000
+	.byte %11100000
+	.byte %11000000
+	.byte %11000000
+	.byte %11000000
+	.byte %11000000
+	.byte %11000000
+	.byte %11000000
+	.byte %11000000
+	.byte %10000000
+	.byte %10000000
+	.byte %10000000
+	.byte %10000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+        
+LogoBitmap1
+	.byte 0
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000 ;8
+	.byte %00000001
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00011000
+	.byte %00011000
+	.byte %00111100
+	.byte %01111100
+	.byte %01111100
+	.byte %01111110
+	.byte %11111110
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111100
+	.byte %11111100
+	.byte %11111100
+	.byte %11111110
+	.byte %11111110
+	.byte %11111110
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %01111111
+	.byte %01111111
+	.byte %01111111
+	.byte %00111111
+	.byte %00111111
+	.byte %00111111
+	.byte %00011111
+	.byte %00011111
+	.byte %00011111
+	.byte %00001111
+	.byte %00001111
+	.byte %00000111
+	.byte %00000111
+	.byte %00000111
+	.byte %00000011
+	.byte %00000011
+	.byte %00000001
+	.byte %00000001
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+
+LogoBitmap2
+	.byte 0
+	.byte %00000000 ;5
+	.byte %11110000
+	.byte %11111100
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111110
+	.byte %11111100
+	.byte %11111100
+	.byte %11111000
+	.byte %11111000
+	.byte %11110000
+	.byte %11110000
+	.byte %11100000
+	.byte %11000000
+	.byte %11000000
+	.byte %10000000
+	.byte %10000001
+	.byte %00000001
+	.byte %00000001
+	.byte %00000011
+	.byte %00000011
+	.byte %00000011
+	.byte %00000111
+	.byte %00000111
+	.byte %00000111
+	.byte %00001111
+	.byte %00001111
+	.byte %00011111
+	.byte %00011111
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000001
+	.byte %00000001
+	.byte %00000001
+	.byte %00000011
+	.byte %00000011
+	.byte %00000111
+	.byte %00000111
+	.byte %00000111
+	.byte %00001111
+	.byte %00001111
+	.byte %00001111
+	.byte %00011111
+	.byte %00011111
+	.byte %00011111
+	.byte %00111111
+	.byte %00111111
+	.byte %00111111
+	.byte %01111111
+	.byte %01111111
+	.byte %01111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111110
+	.byte %11111110
+	.byte %11111100
+	.byte %11111100
+	.byte %11111000
+	.byte %11110000
+	.byte %11110000
+	.byte %11100000
+	.byte %11100000
+	.byte %11000000
+	.byte %11000000
+	.byte %10000000
+LogoBitmap3
+	.byte 0
+	.byte %11110000
+	.byte %11110000
+	.byte %11110000
+	.byte %11110000
+	.byte %11110000
+	.byte %11110000
+	.byte %11110000
+	.byte %11110000
+	.byte %11110000
+	.byte %11110000
+	.byte %11110000
+	.byte %11110000
+	.byte %11110000
+	.byte %11110000
+	.byte %11110000
+	.byte %11110000
+	.byte %11110000
+	.byte %11110000
+	.byte %11110000
+	.byte %11110000
+	.byte %11110000
+	.byte %11100000
+	.byte %11000000
+	.byte %11000000
+	.byte %10000000
+	.byte %10000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %10000000
+	.byte %10000000
+	.byte %10000000
+	.byte %10000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00010000
+	.byte %00010000
+	.byte %00010000
+	.byte %00110000
+	.byte %00110000
+	.byte %00110000
+	.byte %00110000
+	.byte %01110000
+	.byte %11110000
+	.byte %11110000
+	.byte %11110000
+	.byte %11110000
+	.byte %11110000
+	.byte %11110000
+	.byte %11110000
+	.byte %01110000
+	.byte %01110000
+	.byte %00110000
+	.byte %00110000
+	.byte %00010000
+
+LogoBitmap4
+	.byte 0
+	.byte %00000000 ;5
+	.byte %11000000
+	.byte %11100000
+	.byte %11111000
+	.byte %11111100
+	.byte %11111110
+	.byte %11111110
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %01111111
+	.byte %01111111
+	.byte %00111111
+	.byte %00011111
+	.byte %00011111
+	.byte %00001111
+	.byte %00001111
+	.byte %00000111
+	.byte %00000111
+	.byte %00000011
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %01111111
+	.byte %01111111
+	.byte %00111111
+	.byte %00111111
+	.byte %00011111
+	.byte %00011111
+	.byte %00001111
+	.byte %00001111
+	.byte %00000111
+	.byte %00000111
+	.byte %00000011
+	.byte %00000011
+	.byte %00000001
+	.byte %00000001
+	.byte %00000001
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %10000000
+	.byte %10000000
+	.byte %10000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+
+LogoBitmap5
+	.byte 0
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000 ;> 4
+	.byte %00000001
+	.byte %00000001
+	.byte %00000011
+	.byte %00000011
+	.byte %00000111
+	.byte %00000111
+	.byte %00001111
+	.byte %00001111
+	.byte %00001111
+	.byte %00011111
+	.byte %00011111
+	.byte %00011111
+	.byte %00011111
+	.byte %00011111
+	.byte %00111111
+	.byte %00111111
+	.byte %00111111
+	.byte %00111111
+	.byte %00111111
+	.byte %00111111
+	.byte %00111111
+	.byte %00111111
+	.byte %00111111
+	.byte %00111111
+	.byte %00111111
+	.byte %00111111
+	.byte %00111111
+	.byte %00111111
+	.byte %00111111
+	.byte %00111111
+	.byte %00011111
+	.byte %00011111
+	.byte %00011111
+	.byte %00011111
+	.byte %00011111
+	.byte %00011111
+	.byte %00011111
+	.byte %00001111
+	.byte %00001111
+	.byte %00001111
+	.byte %00001111
+	.byte %00000111
+	.byte %00000111
+	.byte %00000111
+	.byte %00000011
+	.byte %00000011
+	.byte %00000011
+	.byte %00000001
+	.byte %00000001
+	.byte %00000001
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+
+        
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;		 Area Background and Dirt Colours
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1850,6 +2539,7 @@ PFOfsTable
 	.byte NDR*5,NDR*5,NDR*5,NDR*5, NDR*5,NDR*5,NDR*5,NDR*5
 
 ;---End Color Data---
+
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
