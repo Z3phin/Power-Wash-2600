@@ -10,81 +10,158 @@
         seg.u Variables
 	org $80
 
-Temp		byte	; Temp variable, used for variety of purposees
-DirtHeightCounter byte
+temp			.byte	; Temp variable, used for variety of purposees
 
-SoundOn		word
+dirt_height_counter 	.byte
 
-RandomNum	byte
+random_num_index	.byte	; Represents the line of code used to generate a random number
 
-RowCleaned	byte
+row_cleaned		.byte
 
-FrameCounter 	byte
+frame_counter 		.byte
 
-GameWon		byte
+win_frame_counter	.byte
 
-Area		byte
-AreaBKCol	byte
-AreaDirtCol	byte
+is_game_won		.byte
 
-; Scores 
-Score0		byte	; Player 0 score
-Score1		byte    ; Player 1 score
+bk_colour 		.byte
 
-BKColour 	byte
-
-; Sprite Positions 
-XPos0		byte	
-XPos1		byte
-ColP0   	byte	; Player0 colour on given scanline
-ColP1		byte	; Player1 colour on given scanline
-
+;sound channels
+sound_channel_0		.byte
+sound_channel_1 	.byte
+;area information
+area_index		.byte
+area_bk_colour		.byte
+area_dirt_colour	.byte
+;scores 
+score_0			.byte	; Player 0 score
+score_1			.byte   ; Player 1 score
+scores 			 equ (score_0) ; Easy indexable name
+;player x positions 
+p0_x_position		.byte	
+p1_x_position		.byte
+x_positions	         equ (p0_x_position) ; Easy indexable name
+;player colours
+p0_colour   		.byte	; Player0 colour on given scanline
+p1_colour		.byte	; Player1 colour on given scanline
 ; Missile Positions
-MissileY0	byte    
-MissileY1	byte
-MissileX0	byte
-MissileX1	byte
+m0_y_position		.byte    
+m1_y_position		.byte
+missile_y_positions	 equ (m0_y_position)
+m0_x_position		.byte ; FUNCTIONALLY UNUSED 
+m1_x_position		.byte ; FUNCTIONALLY UNUSED	
+missile_x_positions	 equ (m0_x_position)
+; Missile Velocities
+m0_velocity		.byte
+m1_velocity		.byte
+missile_velocitiies 	 equ (m0_velocity)
+; Missile Colours
+m0_colour  		.byte
+m1_colour  		.byte
+missile_colours		 equ (m0_colour)
 
-MissileVel0	byte
-MissileVel1	byte
-
-MissileColour0  byte
-MissileColour1  byte
-
-WinFrameCounter	byte
 
 ; Sprite Pointers
-ColourPtr0	word
-ColourPtr1	word
-SpritePtr0	word
-SpritePtr1	word
+p0_colour_ptr		.word
+p1_colour_ptr		.word
+p0_sprite_ptr		.word
+p1_sprite_ptr		.word
 
 ; Score Font Buffer 2x5 array
-FontBuf 	ds 10
+font_buffer 		ds 10
 
-; Dirt 
-Dirt		ds 72	; 6x12 bytes (Dirt map) ;119 bytes of memory
+; Dirt (column major)
+dirt_array		ds 72	; 6x12 bytes (PF0-PF1-PF2-PF0-PF1-PF2)
 
- 
+
+shine 			equ (dirt_array)
+shine_direction 	equ (dirt_array)+1
+logo_bob_height 	equ (dirt_array)+2
+logo_bob_direction 	equ (dirt_array)+3
+logo_bob_timer 		equ (dirt_array)+4
+
 ; Constants 
-SPRITE_HEIGHT 	equ #21
-PLAYER_0_COLOUR equ $94
-PLAYER_1_COLOUR equ $42
-FLOOR_COLOUR	equ $04
+SPRITE_HEIGHT 		equ #21
+PLAYER_0_COLOUR 	equ $94
+PLAYER_1_COLOUR 	equ $42
+PLAYER_0_WIN_COLOUR	equ $97
+PLAYER_1_WIN_COLOUR	equ $40
+PLAYER_0_SCORE_COLOUR	equ $98
+PLAYER_1_SCORE_COLOUR	equ $46
+FLOOR_COLOUR		equ $04
 
 P0_START_POSITION	equ #40
 P1_START_POSITION	equ #112
-RETICLE_START	equ #70
+RETICLE_START		equ #70
 
-MAX_WIN_FRAMES 	equ #150
+MAX_WIN_FRAMES 		equ #150	
 
-DIRT_HEIGHT	equ #4	; Height of each dirt spot in 2xScanlines
-NUM_DIRT_ROWS	equ #12	; Number of dirt rows 
-NDR		equ NUM_DIRT_ROWS
-DIRT_Y_START	equ #32 
+DIRT_HEIGHT		equ #4	; Height of each dirt spot in 2xScanlines
+NUM_DIRT_ROWS		equ #12	; Number of dirt rows 
+NDR			equ NUM_DIRT_ROWS
+DIRT_Y_START		equ #32 
 
-NUM_AREAS	equ #4
+NUM_AREAS		equ #4
 
+RETICLE_OFFSET		equ #4
+
+RETICLE_SIZE 		equ #%00011000
+WATER_SIZE		equ #0
+
+WATER_COLOUR    	equ #$af
+
+PLAYER_0_SPRITE 	equ #0
+PLAYER_1_SPRITE 	equ #1
+MISSILE_0_SPRITE 	equ #2
+MISSILE_1_SPRITE	equ #3
+
+PLAYER_OFF		equ #0
+CLEAR_PLAYFIELD		equ #0
+MISSILE_OFF		equ #0
+MISSILE_ON		equ #2
+
+AUDIO_CHANNEL_0		equ #0
+AUDIO_CHANNEL_1		equ #1
+MUTE_VOLUME 		equ #0
+
+ROW_CLEANED_SOUND 	equ #0
+POWER_WASHER_SOUND	equ #1
+START_WIN_SOUND 	equ #2
+MIDDLE_WIN_SOUND	equ #3
+END_WIN_SOUND		equ #4
+
+LAST_ANIMATION_FRAME    equ #3
+LAST_START_SOUND_FRAME	equ #100
+LAST_MIDDLE_SOUND_FRAME equ #70
+
+SCOREBOARD_BACKGROUND_COLOUR equ #$00
+
+MISSILE_PLAYFIELD_COLLISION equ #%11000000
+
+PLAYFIELD_SCORE_MODE	equ #%00010010
+PLAYFIELD_MODE_RESET	equ #%00000000
+
+SCORE_DIGIT_HEIGHT 	equ #10
+SCORE_BUFFER_HEIGHT	equ #7
+
+HALF_ROW		equ #$F0
+FULL_ROW		equ #$FF
+
+COLOR_SWITCH		equ #%00001000
+
+RIGHT_MOST_BITS		equ #%00000011
+RIGHT_MIDDLE_BITS	equ #%00001100
+LEFT_MOST_BITS		equ #%11000000
+LEFT_MIDDLE_BITS	equ #%00110000
+
+BITMAP_HEIGHT		equ #82
+FOREGROUND_COLOUR 	equ #$08
+BACKGROUND_COLOUR 	equ #$A6
+SHINE_COLOUR		equ #$0E
+SHINE_TIMER_TARGET 	equ #15
+MAX_LOGO_BOB_HEIGHT	equ #192 - BITMAP_HEIGHT*2
+MIN_LOGO_BOB_HEIGHT	equ #0
+LOGO_BOB_TIMER_TARGET 	equ #1
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Code segment
@@ -93,11 +170,95 @@ NUM_AREAS	equ #4
         org $f000
         
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;	              START
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;	            Logo Start
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;        
 
 Start
 	CLEAN_START
+        
+	lda #0
+        sta logo_bob_timer
+        
+        lda #1
+        sta logo_bob_height
+       
+        lda #SHINE_COLOUR
+        sta shine
+        
+NextLogoFrame 
+       
+	VERTICAL_SYNC
+
+	TIMER_SETUP 37
+         
+        jsr StartLogoVBLANK
+        
+        TIMER_WAIT
+        
+        ldx logo_bob_height
+	jsr BufferWSYNC
+        
+	ldx #BITMAP_HEIGHT 	; Bitmap row (descending)
+        ldy #BITMAP_HEIGHT*2	; Scanline counter (descending)
+Logo_Loop
+; WSYNC and store playfield registers
+	sta WSYNC
+	lda LogoBitmap0,x
+        sta PF0		; store first playfield byte
+	lda LogoBitmap1,x
+        sta PF1		; store 2nd byte
+	lda LogoBitmap2,x
+        sta PF2		; store 3rd byte    
+        nop
+        nop
+        nop		; pause to let playfield finish drawing
+	lda LogoBitmap3,x
+        sta PF0		; store 4th byte
+	lda LogoBitmap4,x
+        sta PF1		; store 5th byte
+	lda LogoBitmap5,x
+        sta PF2		; store 6th byte
+        
+        dey	; Decrement scanline
+        tya 	; Y -> A 
+        lsr	; DIVIDE Y by 2 to get the bitmap row 
+        tax	; Store in X 
+        
+        ; ROW currently in A
+       	tya
+        bne Logo_Loop	; repeat until all scanlines drawn
+; Reset playfield
+	SLEEP 14	; give time to finish drawing scanline
+	lda #CLEAR_PLAYFIELD
+        sta PF0
+        sta PF1
+        sta PF2		; clear playfield
+        
+        lda #MAX_LOGO_BOB_HEIGHT
+        sec
+        sbc logo_bob_height
+        tax
+        jsr BufferWSYNC
+        
+	TIMER_SETUP 28
+        lda SWCHB	; test Game Reset switch
+        lsr
+        lsr 
+        bcc GameStart
+        
+        TIMER_WAIT
+        
+        jmp NextLogoFrame
+        
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;	              START
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+	org $F100 
+
+GameStart
+        
+        CLEAN_START
         
         ; Temporary setup of dirt
         ldx #0
@@ -110,69 +271,69 @@ Start
         jsr SetUpPtrs
         
         lda #MAX_WIN_FRAMES
-        sta WinFrameCounter
+        sta win_frame_counter
         
         lda #0
-        sta Area
+        sta area_index
         
         tax
         
         lda DirtColours,x
-        sta AreaDirtCol
-        lda BackgroundColours,x
-        sta AreaBKCol
+        sta area_dirt_colour
         
-        lda AreaBKCol
-        sta BKColour
+        lda BackgroundColours,x
+        sta area_bk_colour
+        sta bk_colour
         
         ; Intitial Scores and missile positions
         lda #0
-        sta Score0
-        sta Score1
+        sta score_0
+        sta score_1
+        
+        sta random_num_index
         
         
         lda #%10000000
         ; Set Missiles off? 
-        sta MissileVel0
-        sta MissileVel1
+        sta m0_velocity
+        sta m1_velocity
         
 
         ; Set Reticles to top
         lda #RETICLE_START
-        sta MissileY0
-        sta MissileY1
+        sta m0_y_position
+        sta m1_y_position
         
         ; Initial Player and missile X positions
         ; Player 0
        	lda #P0_START_POSITION
-        sta XPos0
-        sta MissileX0
+        sta p0_x_position
+        sta m0_x_position
         
         ; Player 1
         lda #P1_START_POSITION
-        sta XPos1
-        sta MissileX1
+        sta p1_x_position
+        sta m1_x_position
         
         ; Set delay for displaying P0 until GRP1 is set
         lda #1
         sta VDELP0	
          
         ; Set horizontal positions 
-        lda XPos0
-        ldx #0
+        lda p0_x_position
+        ldx #PLAYER_0_SPRITE
         jsr SetHorizPos
         
-        lda XPos1
-        ldx #1
+        lda p1_x_position
+        ldx #PLAYER_1_SPRITE
         jsr SetHorizPos
         
-        ldx #1
         sta WSYNC
         sta HMOVE
 
 NextFrame
         lsr SWCHB	; test Game Reset switch
-        bcc Start	; reset?
+        bcc GameStart	; reset?
         
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;	         VERTICAL SYNC
@@ -183,6 +344,10 @@ NextFrame
 	VERTICAL_SYNC
         
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;	       END VERTICAL SYNC
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+        
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;	         VERTICAL BLANK
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         
@@ -191,84 +356,90 @@ NextFrame
         
         jsr ProcessSound
         
-       	; Setup the scores ready for display  
-        lda Score0
+       	; Setup the scores ready for display
+Setup_Scoreboard
+        lda score_0
         ldx #0
         jsr GetBCDBitmap
-        lda Score1
+        lda score_1
         ldx #5
         jsr GetBCDBitmap
-          
-        ; Set the horizontal position of players
-        lda XPos0
-        ldx #0
-        jsr SetHorizPos
         
-        lda XPos1
-        ldx #1
-        jsr SetHorizPos
-        
-        ; Offset the missile0 to the center of sprite0
-        lda XPos0
-        clc
-        adc #4	; Offset
-        ldx #2
-        jsr SetHorizPos
-        
-        ; Offset the missile1 to the center of sprite1
-        lda XPos1
-        clc
-        adc #4	; Offset
-        ldx #3
-        jsr SetHorizPos
-        
-	; Setup background colour and scoremode ready for scoreboard
-        lda #$00
+        ; Setup background colour and scoremode ready for scoreboard
+        lda #SCOREBOARD_BACKGROUND_COLOUR
         sta COLUBK
         
         lda #0
         sta CTRLPF	; Symmetry
         
+; Set the horizontal position of players
+Set_Player_Positions
+        lda p0_x_position
+        ldx #PLAYER_0_SPRITE
+        jsr SetHorizPos
+
+        lda p1_x_position
+        ldx #PLAYER_1_SPRITE
+        jsr SetHorizPos
         
-        ; Make the missile big if it is Reticle Mode for player 0
-        lda MissileVel0
-        bmi CursorSize0
-        lda #0
-        jmp StoreSize0
-CursorSize0
-	lda #%000011000
-StoreSize0
+; Offset the missile0 to the center of sprite0
+Set_Missile_Positions
+        lda p0_x_position
+        clc
+        adc #RETICLE_OFFSET	; Offset
+        ldx #MISSILE_0_SPRITE
+        jsr SetHorizPos
+        
+        ; Offset the missile1 to the center of sprite1
+        lda p1_x_position
+        clc
+        adc #RETICLE_OFFSET
+        ldx #MISSILE_1_SPRITE
+        jsr SetHorizPos
+        
+; Make the missile big if it is Reticle Mode for player 0
+Set_P0_Missile_Size
+        lda m0_velocity
+        bmi .enable_cursor_size_0
+        lda #WATER_SIZE
+        jmp .store_cursor_size_0
+.enable_cursor_size_0
+	lda #RETICLE_SIZE
+.store_cursor_size_0
 	sta NUSIZ0
 
-	; Make the missile big if it is Reticle Mode for player 1
-        lda MissileVel1
-        bmi CursorSize1
-        lda #0
-        jmp StoreSize1
-CursorSize1
-	lda #%00011000
-StoreSize1
+; Make the missile big if it is Reticle Mode for player 1
+Set_P1_Missile_Size
+        lda m1_velocity
+        bmi .enable_cursor_size_1
+        lda #WATER_SIZE
+        jmp .store_cursor_size_1
+.enable_cursor_size_1
+	lda #RETICLE_SIZE
+.store_cursor_size_1
 	sta NUSIZ1
         
-        ; Recolour missile for either Reticle Mode or Stream Mode
-        lda MissileVel0
-        bmi ReticleColour0
-        lda #$af 
-        jmp StoreColour0
-ReticleColour0
+; Recolour missile for either Reticle Mode or Stream Mode
+Set_P0_Missile_Colour
+        lda m0_velocity
+        bmi .enable_reticle_colour_0
+        lda #WATER_COLOUR
+        jmp .store_missile_colour_0
+.enable_reticle_colour_0
 	lda #PLAYER_0_COLOUR
-StoreColour0
-	sta MissileColour0
+.store_missile_colour_0
+	sta m0_colour
         
-        ; Recolour missile for either Reticle Mode or Stream Mode
-        lda MissileVel1
-        bmi ReticleColour1
-        lda #$af 
-        jmp StoreColour1
-ReticleColour1
+; Recolour missile for either Reticle Mode or Stream Mode
+Set_P1_Missile_Colour
+        lda m1_velocity
+        bmi .enable_reticle_colour_1
+        lda #WATER_COLOUR
+        jmp .store_missile_colour_1
+.enable_reticle_colour_1
 	lda #PLAYER_1_COLOUR
-StoreColour1
-	sta MissileColour1
+.store_missile_colour_1
+	sta m1_colour
         
         
         sta WSYNC
@@ -276,142 +447,162 @@ StoreColour1
        
         TIMER_WAIT
 ; 192 lines of frame
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;	      END VERTICAL BLANK
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;	            DRAWING
+;	        MAIN DRAWING
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
 	
         TIMER_SETUP 192
-        jsr DrawScoreboard
-        ldy #7
-.buffer 
-        sta WSYNC
-        dey
-        bne .buffer
         
-        lda BKColour
+        
+        jsr DrawScoreboard
+        
+Load_Area_Colours
+        lda bk_colour
         sta COLUBK
-        lda AreaDirtCol
+        lda area_dirt_colour
         sta COLUPF
-                
+        
+Turn_Off_Player_Sprites
         lda #0
         sta GRP0
         sta GRP1
-        lda MissileColour0
+        
+Load_Missile_Colours
+        lda m0_colour
         sta COLUP0
-        lda MissileColour1
+        lda m1_colour
         sta COLUP1
         
         sta WSYNC
                 
-        ; PLAYFIELD GRAPHICS LOOP
-        ; ------------------
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;        
+; DIRT GRAPHICS LOOP
+; Dirt is made up of blocks with a height (number of scanlines/2).
+; The inner loop is repeated until all scanlines have been drawn.
+; Once the complete height of a block is draw, the next row is begins to be drawn
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         
         ; Y contains the dirt row we are on.
         ; X contains the scanline we are on.
         
-        ldy #$ff ; Start at -1 ; 
-        ldx #$ff
-DrawLoop
+        ldy #$ff ; Start at -1 ; will immediately increment to 0  
+        ldx #$ff ; Incremented every scanline
+Draw_Dirt_Loop
         iny 			; Go to next brick row 
         lda #DIRT_HEIGHT
-        sta DirtHeightCounter
+        sta dirt_height_counter
         cpy #NUM_DIRT_ROWS
-        bcs DoneDirtDraw
+        bcs Draw_Dirt_Done
         
         
-.innerLoop
+.inner_loop
 	
-        ; Enable missiles
-        ; -------------------
+; Enable missiles
+; -------------------
 	
 	inx			; increment scanline counter
-        stx Temp
+        stx temp
         sta WSYNC
         
-        lda #0			
+; Clear Playfield registers 
+        lda #CLEAR_PLAYFIELD			
         sta PF0
         sta PF1                        
         sta PF2
         
-        lda MissileVel0
-        bmi .DrawReticle0	
+Draw_Missile_0
+	; Is button held down? 
+        lda m0_velocity	
+        bmi .draw_reticle_0	
         
-        lda MissileY0
-        cmp Temp		; If the scanline is more than the Missile Y, disable the missile				
-        bcc .EnableMissile0
-	jmp .DisableMissile0
-.DrawReticle0
-	lda MissileY0
-        cmp Temp		
-        beq .EnableMissile0		
-.DisableMissile0
-        lda #0
-        jmp .Finish0
-.EnableMissile0
-	lda #2
-.Finish0
+        ; Button is held down, draw water up to missile position
+        lda m0_y_position
+        cmp temp		; disable missile if scanline more than missile Y				
+        bcc .enable_missile_0
+        beq .enable_missile_0
+	jmp .disable_missile_0
+.draw_reticle_0
+	lda m0_y_position
+        cmp temp		
+        beq .enable_missile_0		
+.disable_missile_0
+        lda #MISSILE_OFF
+        jmp .finish_0
+.enable_missile_0
+	lda #MISSILE_ON
+.finish_0
 	sta ENAM0
             
-                
-        lda MissileVel1
-        bmi .DrawReticle1
+Draw_Missile_1
+	; Is button held down? 
+        lda m1_velocity
+        bmi .draw_reticle_1
         
-        lda MissileY1
-        cmp Temp		; If the scanline is more than the Missile Y, disable the missile				
-        bcc .EnableMissile1
-	jmp .DisableMissile1
-.DrawReticle1
-	lda MissileY1
-        cmp Temp		
-        beq .EnableMissile1		
-.DisableMissile1
-        lda #0
-        jmp .Finish1
-.EnableMissile1
-	lda #2
-.Finish1
+        ; Button is held down, draw water up to missile position
+        lda m1_y_position
+        cmp temp		; disable missile if scanline more than missile Y				
+        bcc .enable_missile_1
+        beq .enable_missile_1
+	jmp .disable_missile_1
+.draw_reticle_1
+	lda m1_y_position
+        cmp temp		
+        beq .enable_missile_1		
+.disable_missile_1
+        lda #MISSILE_OFF
+        jmp .finish_1
+.enable_missile_1
+	lda #MISSILE_ON
+.finish_1
 	sta ENAM1	
-        			              
+        
+        ; DO NOT DRAW DIRT IN BUFFER ZONE
         cpx #DIRT_Y_START
-        bmi .innerLoop		
+        bmi .inner_loop		
                            	
         
-        ; Next Scanline - draw playfield data - Originally by Steven Hugg
-        ; -----------------------------------
+; Next Scanline - 
+; Draw playfield data - Originally by Steven Hugg
+; -----------------------------------
+        
         sta WSYNC
-        dec DirtHeightCounter	
+        dec dirt_height_counter	
         
         
         ; HBLANK
-        lda Dirt+NUM_DIRT_ROWS*0,y ; 0+12*0,y
+        lda dirt_array+NUM_DIRT_ROWS*0,y ; 0+12*0,y
         sta PF0
-        lda Dirt+NUM_DIRT_ROWS*1,y ; 0+12*1,y	 
+        lda dirt_array+NUM_DIRT_ROWS*1,y ; 0+12*1,y	 
         sta PF1
-        lda Dirt+NUM_DIRT_ROWS*2,y
+        lda dirt_array+NUM_DIRT_ROWS*2,y
         sta PF2			 ; 21 machine cycles - 1 off HBLANK
       	; END HBLANK
       	
         inx			 ; Increment scanline counter	
         			 ; timing
        
-        lda Dirt+NUM_DIRT_ROWS*3,y
+        lda dirt_array+NUM_DIRT_ROWS*3,y
         sta PF0
-        lda Dirt+NUM_DIRT_ROWS*4,y
+        lda dirt_array+NUM_DIRT_ROWS*4,y
         sta PF1
-        lda Dirt+NUM_DIRT_ROWS*5,y
-        sta PF2			 ; 21 machine cycles 
-        			 ; TOTAL for PFx is 42 machine cycles. 76 - 42 machine cycles = 34	 
+        lda dirt_array+NUM_DIRT_ROWS*5,y
+        sta PF2			  
+        			 	 
         
-        lda DirtHeightCounter
-        bne .innerLoop
-        beq DrawLoop		 ; Total 55 machine cycles used here, 21 machine cycles free 
+        lda dirt_height_counter
+        bne .inner_loop
+        beq Draw_Dirt_Loop		
 
-DoneDirtDraw 
+Draw_Dirt_Done 
 	sta WSYNC
         
         ; Turn off missiles and playfield data
-  	lda #0
+  	lda #CLEAR_PLAYFIELD ; MISSILE_OFF
         sta PF0
         sta PF1
         sta PF2
@@ -422,21 +613,21 @@ DoneDirtDraw
  ; ----------------
         
         lda #SPRITE_HEIGHT
-        sta Temp
-DrawSpriteLoop
-	ldy Temp
+        sta temp
+Draw_Sprite_Loop
+	ldy temp
         
-        lda (ColourPtr0),y	; Colour for both lines
-        sta ColP0		; A -> ColP0
-        lda (SpritePtr0),y	; Bitmap for first line
+        lda (p0_colour_ptr),y	; Colour for both lines
+        sta p0_colour		; A -> ColP0
+        lda (p0_sprite_ptr),y	; Bitmap for first line
         sta GRP0		; A -> [GRP0] (delayed due to VDELP0)
         
-        lda (ColourPtr1),y
+        lda (p1_colour_ptr),y
         tax
-        lda (SpritePtr1),y
+        lda (p1_sprite_ptr),y
         tay
         
-        lda ColP0 
+        lda p0_colour 
         sta WSYNC
         ; HBLANK
         sty GRP1	;GRP0 also updated due to VDELP0
@@ -445,19 +636,19 @@ DrawSpriteLoop
         stx COLUP1
         sta COLUP0
         
-        dec Temp
+        dec temp
         
-        lda Temp 
+        lda temp 
         sta WSYNC
         
-        bne DrawSpriteLoop
+        bne Draw_Sprite_Loop
         
         lda #FLOOR_COLOUR
         sta COLUBK
         
         ; TURN OFF PLAYER SPRITES 
         
-        lda #0
+        lda #PLAYER_OFF
         sta GRP0
         sta GRP1
      
@@ -467,198 +658,237 @@ DrawSpriteLoop
 ; 29 lines of overscan
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;	       END MAIN DRAWING
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;	            OVERSCAN
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 	TIMER_SETUP 29
         
-        lda GameWon
-        bne .gamewon
-        jsr NormalOverscan
-        jmp .next
-        
-.gamewon
-	lda #0
+        LDA is_game_won
+        BNE Game_Won_Overscan	; 
+        JMP Normal_Overscan	; Both will JMP to End_Frame 
+End_Frame
+	INC frame_counter
+        TIMER_WAIT
+	JMP NextFrame 		; -> back to beginning
+       
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;	          END OVERSCAN
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+Game_Won_Overscan
+	lda #MUTE_VOLUME
         sta AUDV1
 	
-	lda WinFrameCounter
-        bne .noReset
+        ; Has the win animation completed? 
+	lda win_frame_counter
+        bne .animation_not_complete
+        
+        ; Win animation IS complete, begin next round
         jsr NewRound
-        jmp .next
-.noReset
-        cmp #2
-        bne .noLoad
-        ldx #0
-        jsr LoadDirt
-        dec WinFrameCounter
-        jmp .next
-.noLoad 
-	cmp #1
-        bne .noLoad1
-        ldx #1
-        jsr LoadDirt
-        dec WinFrameCounter
-        jmp .next
-.noLoad1
-        cmp #100
-        bcc .skipSound0
-        ldy #6
-        ldx #1
-        jsr PlaySound
-        jmp .endofsound
-.skipSound0
-	cmp #70
-        bcc .skipSound1
-        ldy #7
-        ldx #1
-        jsr PlaySound
-        jmp .endofsound
-.skipSound1
-        ldy #8
-        ldx #1
-        jsr PlaySound
-.endofsound
-	jsr GameWin
-.next  
-        inc FrameCounter
-        
-        TIMER_WAIT
-; total = 262 lines, go to next frame
-        jmp NextFrame
+        jmp End_Frame
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; 					Subroutines
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-NormalOverscan subroutine
-	lda MissileVel0
-        bmi .noStream0
+	; Win animation NOT completed
+        ; A - contains win_frame_counter (decreases)
+.animation_not_complete
+        ; Is animation on the last few frames? 
+        cmp #LAST_ANIMATION_FRAME
+        bcs .continue_animation
         
-        ldy #5
-        ldx #1
+        ; Animation nearing end, begin loading dirt again (frames 1 and 2)
+        ; 	split due to procedural calculation time
+.load_dirt
+        tax
+        dex
+        jsr LoadDirt
+        dec win_frame_counter
+        jmp End_Frame
+                 
+.continue_animation
+        cmp #LAST_START_SOUND_FRAME
+        bcc .play_middle_win_sound
+        
+.play_start_win_sound
+        ldy #START_WIN_SOUND
+        ldx #AUDIO_CHANNEL_1
+        jsr PlaySound
+        jsr WinAnimation
+        jmp End_Frame      
+
+.play_middle_win_sound
+	cmp #LAST_MIDDLE_SOUND_FRAME
+        bcc .play_end_win_sound
+        ldy #MIDDLE_WIN_SOUND
+        ldx #AUDIO_CHANNEL_1
+        jsr PlaySound
+        jsr WinAnimation
+        jmp End_Frame 
+
+.play_end_win_sound
+        ldy #END_WIN_SOUND
+        ldx #AUDIO_CHANNEL_1
+        jsr PlaySound
+	jsr WinAnimation
+        jmp End_Frame
+
+
+
+Normal_Overscan 
+	lda m0_velocity
+        bmi .p0_not_firing
+        
+        ldy #POWER_WASHER_SOUND
+        ldx #AUDIO_CHANNEL_1
         jsr PlaySound 
-        lda #0
         
- 	ldx #0
+ 	ldx #PLAYER_0_SPRITE
  	jsr MissileCollision
-.noStream0
-        ; Skip Collisions in Reticle Mode
-        lda MissileVel1
-        bmi .noStream1
         
-        ldy #5
-        ldx #1
-        jsr PlaySound  
-        lda #0
+.p0_not_firing
+        lda m1_velocity
+        bmi .p1_not_firing
         
-        ldx #1
+        ldy #POWER_WASHER_SOUND
+        ldx #AUDIO_CHANNEL_1
+        jsr PlaySound 
+        
+        ldx #PLAYER_1_SPRITE
         jsr MissileCollision
-.noStream1 
+.p1_not_firing 
 
 	; Clear Collisions
         sta CXCLR
         
         jsr TestAllClean
-        bmi .noWin
-        inc GameWon
-        jmp .gamewon
+        bmi .not_all_clean
         
-.noWin
+        ; Indicate game is won and lock out input
+        inc is_game_won
+        jmp End_Frame
         
+.not_all_clean
         ; Read Button Input for next frame
+.read_input        
         lda INPT4
-	sta MissileVel0
+	sta m0_velocity
         
         lda INPT5
-	sta MissileVel1 
+	sta m1_velocity 
        
         ; Read Movement Input
         jsr MoveJoystick0
         jsr MoveJoystick1
         jsr AnimatePlayer0
         jsr AnimatePlayer1
-.gamewon
-        rts
         
-GameWin subroutine
+        jmp End_Frame
+        ;------------
 
-	lda WinFrameCounter
-        lsr
-        lsr
-        lsr
-        lsr
-        lsr
-        lsr
-        bcs .PlayerBK
-        lda AreaBKCol
-        sta BKColour
-        jmp .EndChangeColour
-.PlayerBK        
-        lda Score0
-        cmp Score1
-        bcc .Player1Win
-        bcs .Player0Win
-  	jmp .EndChangeColour
-.Player1Win
-        lda #PLAYER_1_COLOUR-3
-        sta BKColour
-        jmp .EndChangeColour
-.Player0Win
-        lda #PLAYER_0_COLOUR+3
-        sta BKColour
-.EndChangeColour
-        dec WinFrameCounter
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; 	  Subroutines
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+WinAnimation subroutine
+
+	lda win_frame_counter
+        lsr	; SLOW DOWN ANIMATION
+        lsr	;
+        lsr	;
+        lsr	;
+        lsr	;
+        lsr	; SLOW DOWN ANIMATION
+        
+        ; Should background change colour? 
+        bcs .change_background_colour
+        
+        ; No, store current background colour
+        lda area_bk_colour
+        sta bk_colour
+        dec win_frame_counter
+	rts
+        
+.change_background_colour        
+        lda score_0
+        cmp score_1
+        beq .draw
+        bcc .player_1_win
+        
+.player_0_win
+        lda #PLAYER_0_WIN_COLOUR
+        sta bk_colour
+        dec win_frame_counter
+	rts
+        
+.player_1_win
+        lda #PLAYER_1_WIN_COLOUR
+        sta bk_colour
+.draw
+        dec win_frame_counter
 	rts
         
 NewRound subroutine
-	inc Area
-        lda Area
+	inc area_index
+        
+        ; Should area index reset to zero after reaching max?
+        lda area_index
         cmp #NUM_AREAS
-        bne .noResetArea
+        bne .load_area_colours
         lda #0
-        sta Area
-.noResetArea
-	lda Area
+        sta area_index
+.load_area_colours
         tax
         lda DirtColours,x
-        sta AreaDirtCol
+        sta area_dirt_colour
         lda BackgroundColours,x
-        sta AreaBKCol
+        sta area_bk_colour
         
         jsr GameReset	
         rts
 
 
+
 ; x - contains the player missile and player score to add to
 MissileCollision subroutine
 	lda CXM0FB,x
-        sta Temp
-	lda #%11000000
-        bit Temp
-        beq .nocollision
+        sta temp
+	lda #MISSILE_PLAYFIELD_COLLISION
+        bit temp
+        bne .collision
+        rts
+        
 .collision
-
 	txa
         tay		; Move the player we are looking at into the Y register
         pha		; Save the contents of the X register
         
-        lda MissileY0,y	; A contains missile Y coordinate  
-        ldx XPos0,y	; X contains missile X coordinate
+        lda missile_y_positions,y	; A contains missile Y coordinate  
+        ldx x_positions,y	; X contains missile X coordinate
         
         jsr CleanDirt
-        bmi .nocollision2
-        
+        bpl .dirt_cleaned
+        pla 
+        tax
+        rts
+
+.dirt_cleaned
         pla
 	tax		; Load the player we are looking at into the X register		
 
-	lda RowCleaned
-        bne .NoAddScore
-        
+	; Add score if the whole row was cleaned
+	lda row_cleaned
+        beq .add_score
+        rts
+
+.add_score
         txa 
         pha
         
-        ldy #3
-        ldx #0
+        ldy #ROW_CLEANED_SOUND
+        ldx #AUDIO_CHANNEL_0
         jsr PlaySound
         
         pla
@@ -666,18 +896,11 @@ MissileCollision subroutine
         
 	; Add to the player score if a PF was cleaned
 	clc
-        sed
-        lda Score0,x
+        sed 
+        lda scores,x; MUST use ADC due to Binary Coded Decimal, cannot use INC
         adc #1	
-        sta Score0,x
+        sta scores,x
         cld
-.NoAddScore
-        jmp .nocollision
-        
-.nocollision2
-	pla
-        tax
-.nocollision
 	rts
         ; end add one to score
         
@@ -689,35 +912,39 @@ MissileCollision subroutine
 DrawScoreboard subroutine
 	; Put playfield into score mode
         
-        lda #%00010010
+        lda #PLAYFIELD_SCORE_MODE
         sta CTRLPF
-        lda #$98   ; Slightly lighter colour than player0 sprite
+        lda #PLAYER_0_SCORE_COLOUR   ; Slightly lighter colour than player0 sprite
         sta COLUP0 ; left colour
-        lda #$46   ; Slightly lighter colour than player1 sprite		
+        lda #PLAYER_1_SCORE_COLOUR   ; Slightly lighter colour than player1 sprite		
         sta COLUP1 ; right colour	
         ; Draw digits
         ldy #0
-ScanLoop1a
+.draw_loop
         sta WSYNC ; 76
         tya
         lsr	   ; Divide Y by two for double-height lines 	
         tax	   ; A -> X
-        lda FontBuf+0,x
+        lda font_buffer+0,x
         sta PF1		; set left score bitmap	
         SLEEP 28
-        lda FontBuf+5,x
+        lda font_buffer+5,x
         sta PF1		; set right score bitmap
         iny
-        cpy #10
-        bcc ScanLoop1a
+        cpy #SCORE_DIGIT_HEIGHT
+        bcc .draw_loop
         
         ; Clear playfield
-        lda #0
+        lda #CLEAR_PLAYFIELD
         sta WSYNC
         sta PF1
         ; Turn playfield reflection off (and turn score mode off)
-        lda #%00000000
+        lda #PLAYFIELD_MODE_RESET
         sta CTRLPF
+        
+        ldx #SCORE_BUFFER_HEIGHT
+        jsr BufferWSYNC
+        
         rts
 
         
@@ -729,20 +956,20 @@ GetBCDBitmap subroutine
 	; Fetch the bytes for the 1st digit
         pha		; save original BCD number
         and #$0F	; mask out the least significant number
-        sta Temp
+        sta temp
         asl 
         asl
-        adc Temp 	; multiply by 5
+        adc temp 	; multiply by 5
         tay		; A -> Y
         lda #5
-        sta Temp	; count down from 5
+        sta temp	; count down from 5
 .loop1
 	lda DigitsBitmap,y
         and #$0F	; mask out left most digit
-        sta FontBuf,x 
+        sta font_buffer,x 
         iny
         inx
-        dec Temp
+        dec temp
         bne .loop1
         
         ; Second Digit 
@@ -752,10 +979,10 @@ GetBCDBitmap subroutine
         lsr
         lsr
         lsr		;shift right by 4
-        sta Temp
+        sta temp
         asl 
         asl
-        adc Temp	; multiply by 5
+        adc temp	; multiply by 5
         tay 		; A -> Y
         dex
         dex
@@ -763,15 +990,15 @@ GetBCDBitmap subroutine
         dex
         dex
         lda #5
-        sta Temp 	; count down from 5
+        sta temp 	; count down from 5
 .loop2
 	lda DigitsBitmap,y
         and #$F0	; make out rightmost digit
-        ora FontBuf,x	; combine left and right digts
-        sta FontBuf,x	; store combined digits
+        ora font_buffer,x	; combine left and right digts
+        sta font_buffer,x	; store combined digits
         iny
         inx
-        dec Temp
+        dec temp
         bne .loop2
         rts
                
@@ -813,11 +1040,11 @@ DivideRowLoop
         tay
         lda PFMaskTable,x
         eor #$ff
-        and Dirt,y
-        cmp Dirt,y		; was there a change?
+        and dirt_array,y
+        cmp dirt_array,y		; was there a change?
         beq NoBrickFound2	; no, so return -1 as result
-        sta Dirt,y
-        sta RowCleaned
+        sta dirt_array,y
+        sta row_cleaned
         pla		; return remainder as result
         rts
 NoBrickFound2
@@ -829,182 +1056,186 @@ NoBrickFound
 ; Returns a negative number if not all clean 
 TestAllClean subroutine	
 	ldx #$FF
-.CheckRow
+.check_row
 	inx
-	lda Dirt+NUM_DIRT_ROWS*0,x
-        and #$F0
-        bne .NotClean
+	lda dirt_array+NUM_DIRT_ROWS*0,x
+        and #HALF_ROW
+        bne .not_clean
         
-        lda Dirt+NUM_DIRT_ROWS*1,x
-        bne .NotClean
+        lda dirt_array+NUM_DIRT_ROWS*1,x
+        bne .not_clean
         
-        lda Dirt+NUM_DIRT_ROWS*2,x
-        bne .NotClean
+        lda dirt_array+NUM_DIRT_ROWS*2,x
+        bne .not_clean
         
-        lda Dirt+NUM_DIRT_ROWS*3,x
-        and #$F0
-        bne .NotClean
+        lda dirt_array+NUM_DIRT_ROWS*3,x
+        and #HALF_ROW
+        bne .not_clean
         
-        lda Dirt+NUM_DIRT_ROWS*4,x
-        bne .NotClean
+        lda dirt_array+NUM_DIRT_ROWS*4,x
+        bne .not_clean
         
-        lda Dirt+NUM_DIRT_ROWS*5,x
-        bne .NotClean
+        lda dirt_array+NUM_DIRT_ROWS*5,x
+        bne .not_clean
         
         cpx #NUM_DIRT_ROWS-1
-        bne .CheckRow
+        bne .check_row
         rts
-.NotClean
-	lda #$FF
+.not_clean
+	lda #$FF ;-1
         rts
         
-        
-                
+; X - contains which half to load procedurally (0 = left, 1 = right)                       
 LoadDirt subroutine
-	lda #%00001000
+	lda #COLOR_SWITCH
         bit SWCHB
-        
         bne .procedural
+        
+        ; Is P2 difficulty expert? (is random mode selected)
         lda SWCHB
         bmi .random
+        
+        ; No, P2 is amateur
         jsr LoadFull
-        jmp .return
+        rts
+        ; Yes, P2 is expert
 .random
 	jsr LoadRandom
-        jmp .return
+        rts
+        
 .procedural
 	cpx #0
-    	bne .secondProc
-	jsr LoadProcedural
-        jmp .return
-.secondProc
-	jsr LoadProcedural1
-.return
+    	bne .second_procedural
+	jsr LoadLeftProcedural
+        rts
+        
+.second_procedural
+	jsr LoadRightProcedural
         rts
         
 LoadFull subroutine
 	ldx #$FF	
-.FullLoop
+.row_loop
 	inx
-        lda #$F0
-        sta Dirt+NUM_DIRT_ROWS*0,x
-        sta Dirt+NUM_DIRT_ROWS*3,x
+        lda #HALF_ROW
+        sta dirt_array+NUM_DIRT_ROWS*0,x
+        sta dirt_array+NUM_DIRT_ROWS*3,x
         
-        lda #$FF
-        sta Dirt+NUM_DIRT_ROWS*1,x
-        sta Dirt+NUM_DIRT_ROWS*2,x
-        sta Dirt+NUM_DIRT_ROWS*4,x
-        sta Dirt+NUM_DIRT_ROWS*5,x
+        lda #FULL_ROW
+        sta dirt_array+NUM_DIRT_ROWS*1,x
+        sta dirt_array+NUM_DIRT_ROWS*2,x
+        sta dirt_array+NUM_DIRT_ROWS*4,x
+        sta dirt_array+NUM_DIRT_ROWS*5,x
         
         cpx #NUM_DIRT_ROWS-1
-        bne .FullLoop
+        bne .row_loop
         
         rts
         
 LoadRandom subroutine
 	ldx #$FF
-        ldy RandomNum
-.randomLoop
+        ldy random_num_index
+.row_loop
 	inx
 	
         lda NextFrame,y
-        and #$F0
-        sta Dirt+NUM_DIRT_ROWS*0,x
+        and #HALF_ROW
+        sta dirt_array+NUM_DIRT_ROWS*0,x
         
         iny
         lda NextFrame,y
-        and #$F0
-        sta Dirt+NUM_DIRT_ROWS*3,x
+        and #HALF_ROW
+        sta dirt_array+NUM_DIRT_ROWS*3,x
         
         iny
         lda NextFrame,y
-        sta Dirt+NUM_DIRT_ROWS,x
+        sta dirt_array+NUM_DIRT_ROWS,x
         iny
         lda NextFrame,y
-        sta Dirt+NUM_DIRT_ROWS*2,x
+        sta dirt_array+NUM_DIRT_ROWS*2,x
         iny
         lda NextFrame,y
-        sta Dirt+NUM_DIRT_ROWS*4,x
+        sta dirt_array+NUM_DIRT_ROWS*4,x
         iny
         lda NextFrame,y
-        sta Dirt+NUM_DIRT_ROWS*5,x
+        sta dirt_array+NUM_DIRT_ROWS*5,x
         iny
         
         cpx #NUM_DIRT_ROWS-1
-        bne .randomLoop
+        bne .row_loop
         
-        sty RandomNum
+        sty random_num_index
         rts
         
-LoadProcedural subroutine
-	inc RandomNum
-	ldx RandomNum
-        lda #%11000000 ;DrawLoop,x
-        sta Temp
+LoadLeftProcedural subroutine
+	inc random_num_index
+	ldx random_num_index
+        lda Draw_Dirt_Loop,x
+        sta temp
         
         ldy #$FF
-.ProceduralLoop
+.row_loop
         iny
         
-        lda Temp
-        and #$03 
+        lda temp
+        and #RIGHT_MOST_BITS 
         pha
         tax
         jsr GetProcData
-	sta Dirt+NUM_DIRT_ROWS,y
+	sta dirt_array+NUM_DIRT_ROWS,y
         pla
         tax
         jsr GetHalfProcData
-	sta Dirt+NUM_DIRT_ROWS*0,y
+	sta dirt_array+NUM_DIRT_ROWS*0,y
         
-        lda Temp
-        and #$0C
+        lda temp
+        and #RIGHT_MIDDLE_BITS
         lsr
         lsr
         tax
         jsr GetProcData
-        sta Dirt+NUM_DIRT_ROWS*2,y
+        sta dirt_array+NUM_DIRT_ROWS*2,y
 
       	cpy #NUM_DIRT_ROWS-1
-        bne .ProceduralLoop
+        bne .row_loop
        
 	rts
         
-LoadProcedural1 subroutine
-	ldx RandomNum
-        lda #%11000000 ;DrawLoop,x
-        sta Temp
+LoadRightProcedural subroutine
+	ldx random_num_index
+        lda Draw_Dirt_Loop,x
+        sta temp
         
         ldy #$FF
-.ProceduralLoop
+.row_loop
         iny
         
-	lda Temp
-        and #$30
+	lda temp
+        and #LEFT_MIDDLE_BITS
         lsr
         lsr
         lsr
         lsr
         tax
         jsr GetProcData
-       	sta Dirt+NUM_DIRT_ROWS*4,y
+       	sta dirt_array+NUM_DIRT_ROWS*4,y
         
-        lda Temp
-        and #$C0
+        lda temp
+        and #LEFT_MOST_BITS
         rol
         rol
         rol
         pha
         tax
         jsr GetProcData
-        sta Dirt+NUM_DIRT_ROWS*5,y
+        sta dirt_array+NUM_DIRT_ROWS*5,y
         pla
         tax
         jsr GetHalfProcData
-        sta Dirt+NUM_DIRT_ROWS*3,y
+        sta dirt_array+NUM_DIRT_ROWS*3,y
         
       	cpy #NUM_DIRT_ROWS-1
-        bne .ProceduralLoop
+        bne .row_loop
        
 	rts
 
@@ -1013,44 +1244,48 @@ LoadProcedural1 subroutine
 ; Y contains row index (0-11)
 ; A will contain output
 GetProcData subroutine
-        bne .next1
+        bne .index_1
         lda ProcData+NUM_DIRT_ROWS*0,y
-        jmp .load
-.next1
+        rts
+        
+.index_1
         dex
-        bne .next2
+        bne .index_2
         lda ProcData+NUM_DIRT_ROWS*1,y
-        jmp .load
-.next2	
+        rts
+        
+.index_2	
         dex
-        bne .next3
+        bne .index_3
 	lda ProcData+NUM_DIRT_ROWS*2,y
-        jmp .load
-.next3
+        rts 
+        
+.index_3
       	lda ProcData+NUM_DIRT_ROWS*3,y
-.load   
         rts
         
 ; X contains ProcData index (0,1,2,3)
 ; Y contains row index (0-11)
 ; A will contain output
 GetHalfProcData subroutine
-        bne .next1
+        bne .index_1
         lda HalfProcData+NUM_DIRT_ROWS*0,y
-        jmp .load
-.next1
+        rts
+        
+.index_1
         dex
-        bne .next2
+        bne .index_2
         lda HalfProcData+NUM_DIRT_ROWS*1,y
-        jmp .load
-.next2	
+        rts
+        
+.index_2	
         dex
-        bne .next3
+        bne .index_3
 	lda HalfProcData+NUM_DIRT_ROWS*2,y
-        jmp .load
-.next3
-      	lda HalfProcData+NUM_DIRT_ROWS*3,y
-.load    
+        rts
+        
+.index_3
+      	lda HalfProcData+NUM_DIRT_ROWS*3,y   
         rts
 	
 	
@@ -1063,157 +1298,175 @@ GetHalfProcData subroutine
 
 ; Player 0 Movement
 ; ----------------
+P0_LEFT_INPUT		equ #%01000000
+P0_RIGHT_INPUT		equ #%10000000
+P0_UP_INPUT		equ #%00010000
+P0_DOWN_INPUT		equ #%00100000
+LEFT_MOST_POSITION 	equ #1
+RIGHT_MOST_POSITION	equ #153
+UP_MOST_POSITION	equ #1
+DOWN_MOST_POSITION	equ #DIRT_Y_START+DIRT_HEIGHT*2*NUM_DIRT_ROWS	
 
 ; Read joystick movement and apply to object 0
 MoveJoystick0 subroutine
 ; Move horizontally
-        ldx XPos0
-	lda #%01000000	;Left?
+        ldx p0_x_position
+	lda #P0_LEFT_INPUT		
 	bit SWCHA
-	bne .SkipMoveLeft
-        cpx #1
-        bcc .SkipMoveLeft
+	bne .not_moving_left
+        cpx #LEFT_MOST_POSITION
+        bcc .not_moving_left
         dex
-.SkipMoveLeft
-	lda #%10000000	;Right?
+.not_moving_left
+	lda #P0_RIGHT_INPUT	
 	bit SWCHA 
-	bne .SkipMoveRight
-        cpx #153
-        bcs .SkipMoveRight
+	bne .not_moving_right
+        cpx #RIGHT_MOST_POSITION
+        bcs .not_moving_right
         inx
-.SkipMoveRight
-	stx XPos0
+.not_moving_right
+	stx p0_x_position
 ; Move Vertically
-	ldy MissileY0
-        lda #%00010000	;Up?
+	ldy m0_y_position
+        lda #P0_UP_INPUT	
         bit SWCHA
-        bne .SkipMoveUp
-        cpy #1
-        bcc .SkipMoveUp
+        bne .not_moving_up
+        cpy #UP_MOST_POSITION
+        bcc .not_moving_up
         dey
         dey
-.SkipMoveUp
-        lda #%00100000	;down?
+.not_moving_up
+        lda #P0_DOWN_INPUT	
         bit SWCHA
-        bne .SkipMoveDown
-        cpy #DIRT_Y_START+DIRT_HEIGHT*2*NUM_DIRT_ROWS
-        bcs .SkipMoveDown
+        bne .not_moving_down
+        cpy #DOWN_MOST_POSITION
+        bcs .not_moving_down
         iny
         iny
-.SkipMoveDown
-        sty MissileY0  
+.not_moving_down
+        sty m0_y_position  
         
 	rts    
     
         
 ; Player 1 Movement
 ; ----------------
+
+P1_LEFT_INPUT		equ #%00000100
+P1_RIGHT_INPUT		equ #%00001000
+P1_UP_INPUT		equ #%00000001
+P1_DOWN_INPUT		equ #%00000010
         
 MoveJoystick1 subroutine 
 ; Move horizontally
-        ldx XPos1
-	lda #$04	;Left?
+        ldx p1_x_position
+	lda #P1_LEFT_INPUT	
 	bit SWCHA
-	bne .SkipMoveLeft
-        cpx #1		; Max Left
-        bcc .SkipMoveLeft
+	bne .not_moving_left
+        cpx #LEFT_MOST_POSITION			
+        bcc .not_moving_left
         dex
-.SkipMoveLeft
-	lda #$08	;Right?
+.not_moving_left
+	lda #P1_RIGHT_INPUT	
 	bit SWCHA 
-	bne .SkipMoveRight
-        cpx #153	; Max Right
-        bcs .SkipMoveRight
+	bne .not_moving_right
+        cpx #RIGHT_MOST_POSITION		
+        bcs .not_moving_right
         inx
-.SkipMoveRight
-	stx XPos1
+.not_moving_right
+	stx p1_x_position
         
 ; Move Vertically
-	ldy MissileY1
-        lda #$01	;Up?
+	ldy m1_y_position
+        lda #P1_UP_INPUT	
         bit SWCHA
-        bne .SkipMoveUp
-        cpy #1
-        bcc .SkipMoveUp
+        bne .not_moving_up
+        cpy #UP_MOST_POSITION
+        bcc .not_moving_up
         dey
         dey
-.SkipMoveUp
-        lda #$02	;down?
+.not_moving_up
+        lda #P1_DOWN_INPUT	
         bit SWCHA
-        bne .SkipMoveDown
-        cpy #DIRT_Y_START+DIRT_HEIGHT*2*NUM_DIRT_ROWS
-        bcs .SkipMoveDown
+        bne .not_moving_down
+        cpy #DOWN_MOST_POSITION
+        bcs .not_moving_down
         iny
         iny
-.SkipMoveDown
-        sty MissileY1   
+.not_moving_down
+        sty m1_y_position   
         
 	rts
 
+P0_HORIZONTAL_INPUT	equ #%11000000
+
 AnimatePlayer0 subroutine
-        lda #$C0
+        lda #P0_HORIZONTAL_INPUT
 	and SWCHA
-        cmp #$C0
+        cmp #P0_HORIZONTAL_INPUT
         beq .idle
         
-	lda FrameCounter
-        lsr
-        lsr
-        lsr
-        lsr
+	lda frame_counter
+        lsr	; Slow down animation
+        lsr	; |
+        lsr	; |
+        lsr	; V
        	
-        bcs .SetFrame2
-        
+        bcs .set_walking_frame_1
+.set_walking_frame_0
         lda #<Frame1
-        sta SpritePtr0
+        sta p0_sprite_ptr
         lda #>Frame1
-        sta SpritePtr0+1
-        jmp .return
-.SetFrame2
- 	lda #<Frame2
-        sta SpritePtr0
-        lda #>Frame2
-        sta SpritePtr0+1
-	jmp .return
-.idle
-	lda #<Frame0
-        sta SpritePtr0
-        lda #>Frame0
-        sta SpritePtr0+1
-.return   
+        sta p0_sprite_ptr+1
         rts
         
-AnimatePlayer1 subroutine 
-        lda #$0C
-	and SWCHA
-        cmp #$0C
-        beq .idle
-        
-	lda FrameCounter
-        lsr
-        lsr
-        lsr
-        lsr
-       	
-        bcs .SetFrame2
-        
-        lda #<Frame1
-        sta SpritePtr1
-        lda #>Frame1
-        sta SpritePtr1+1
-        jmp .return
-.SetFrame2
+.set_walking_frame_1
  	lda #<Frame2
-        sta SpritePtr1
+        sta p0_sprite_ptr
         lda #>Frame2
-        sta SpritePtr1+1
-	jmp .return
+        sta p0_sprite_ptr+1
+	rts
+        
 .idle
 	lda #<Frame0
-        sta SpritePtr1
+        sta p0_sprite_ptr
         lda #>Frame0
-        sta SpritePtr1+1
-.return   
+        sta p0_sprite_ptr+1  
+        rts
+ 
+P1_HORIZONTAL_INPUT	equ #%00001100
+
+AnimatePlayer1 subroutine 
+        lda #P1_HORIZONTAL_INPUT
+	and SWCHA
+        cmp #P1_HORIZONTAL_INPUT
+        beq .idle
+        
+	lda frame_counter
+	lsr	; Slow down animation
+        lsr	; |
+        lsr	; |
+        lsr	; V
+       	
+        bcs .set_walking_frame_1
+.set_walking_frame_0        
+        lda #<Frame1
+        sta p1_sprite_ptr
+        lda #>Frame1
+        sta p1_sprite_ptr+1
+        rts
+        
+.set_walking_frame_1
+ 	lda #<Frame2
+        sta p1_sprite_ptr
+        lda #>Frame2
+        sta p1_sprite_ptr+1
+	rts
+.idle
+	lda #<Frame0
+        sta p1_sprite_ptr
+        lda #>Frame0
+        sta p1_sprite_ptr+1
         rts
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1226,13 +1479,13 @@ AnimatePlayer1 subroutine
 ;  X=2: missile 0
 ;  X=3: missile 1
 ;  X=4: ball
-SetHorizPos
+SetHorizPos subroutine
 	sta WSYNC	; start a new line
         bit 0		; waste 3 cycles
 	sec		; set carry flag
-DivideLoop
+.divide_loop
 	sbc #15		; subtract 15
-	bcs DivideLoop	; branch until negative
+	bcs .divide_loop; branch until negative
 	eor #7		; calculate fine offset
 	asl
 	asl
@@ -1248,77 +1501,75 @@ DivideLoop
 
 GameReset subroutine 
 	lda #MAX_WIN_FRAMES
-        sta WinFrameCounter
+        sta win_frame_counter
         
-        lda AreaBKCol
-        sta BKColour
+        lda area_bk_colour
+        sta bk_colour
         
-        ; Intitial Scores and missile positions
+        ; Intitial Scores
         lda #0
-        sta Score0
-        sta Score1
-        
-        sta GameWon
+        sta score_0
+        sta score_1
+        sta is_game_won
         
         lda #%10000000
         ; Set Missiles off? 
-        sta MissileVel0
-        sta MissileVel1
+        sta m0_velocity
+        sta m1_velocity
         
         ; Set Reticles to centre
         lda #RETICLE_START
-        sta MissileY0
-        sta MissileY1
+        sta m0_y_position
+        sta m1_y_position
         
         ; Initial Player and missile X positions
         ; Player 0
        	lda #P0_START_POSITION
-        sta XPos0
-        sta MissileX0
+        sta p0_x_position
+        sta m0_x_position
         
         ; Player 1
         lda #P1_START_POSITION
-        sta XPos1
-        sta MissileX1
+        sta p1_x_position
+        sta m1_x_position
 
 	rts
-        
-
-        
-        
+         
 SetUpPtrs subroutine
 	lda #<Frame0
-        sta SpritePtr0
-        lda #>Frame0
-        sta SpritePtr0+1
+        sta p0_sprite_ptr
+        sta p1_sprite_ptr
         
-        lda #<Frame0
-        sta SpritePtr1
         lda #>Frame0
-        sta SpritePtr1+1
+        sta p0_sprite_ptr+1
+        sta p1_sprite_ptr+1
         
         lda #<ColourPlayer0
-        sta ColourPtr0
+        sta p0_colour_ptr
         lda #>ColourPlayer0
-        sta ColourPtr0+1
+        sta p0_colour_ptr+1
           
         lda #<ColourPlayer1
-        sta ColourPtr1
+        sta p1_colour_ptr
         lda #>ColourPlayer1
-        sta ColourPtr1+1
+        sta p1_colour_ptr+1
         
         rts
    
 ; Credit to 8Blit - Atari 2600 Game Programming
+; Y contains the sound to play
+; X contains the audio channel to play on (0 or 1)
 PlaySound subroutine 
+	; Is audio muted (P1 to Expert mode)
 	lda SWCHB
         asl  
-        bmi .nomute
-        lda #0
+      	bmi .not_mute
+        lda #MUTE_VOLUME
         sta AUDV0
         sta AUDV1
-        jmp .return
-.nomute
+        rts
+        
+.not_mute
 	lda SoundType,y
         sta AUDC0,x
         lda SoundVolume,y
@@ -1326,34 +1577,632 @@ PlaySound subroutine
         lda SoundPitch,y
         sta AUDF0,x
         lda SoundLength,y
-        sta SoundOn,x 
-.return
+        sta sound_channel_0,x 
         rts
         
 ProcessSound subroutine
+	; Is audio muted (P1 to Expert Mode)
 	lda SWCHB
         asl  
-        bmi .nomute
-        lda #0
+        bmi .not_mute
+        lda #MUTE_VOLUME
         sta AUDV0
         sta AUDV1
-        jmp .return
-.nomute
-	
-	ldx #1
-.soundChnl
-	lda SoundOn,x
-        beq .soundDone
-        dec SoundOn,x
-        bne .soundContinue
-        lda #0
+        rts
+        
+.not_mute
+	ldx #AUDIO_CHANNEL_1
+.sound_channel_loop
+	lda sound_channel_0,x
+        beq .sound_done
+        dec sound_channel_0,x
+        bne .sound_continue
+        lda #MUTE_VOLUME
         sta AUDV0,x
-.soundDone
-.soundContinue
+.sound_done
+.sound_continue
 	dex
-        beq .soundChnl
-.return
+        beq .sound_channel_loop
 	rts
+        
+; X - contains the number of scanlines to wait        
+BufferWSYNC subroutine
+	txa
+        beq .none
+.loop
+	sta WSYNC
+        dex 
+        bne .loop
+.none
+	rts
+        
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; 	    Logo Subroutines
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  
+
+CalculateShineDirection subroutine 
+	lda #SHINE_COLOUR
+        cmp shine
+        bne .not_shine
+        lda #-1
+        sta shine_direction
+.not_shine
+        lda #FOREGROUND_COLOUR 
+        cmp shine
+        bne .not_foreground
+        lda #1
+        sta shine_direction
+.not_foreground
+        
+        lda shine_direction
+        bmi .decrement
+        inc shine
+        rts
+       
+.decrement
+	dec shine
+	rts 
+        
+StartLogoVBLANK subroutine
+	; if shine == SHINE_COLOUR then shine_direction = -1 
+        ; else if shine == FOREGROUND_COLOUR then shine_direction = 1
+        ; else shine += shine_direction
+        
+
+	lda logo_bob_timer
+        cmp #LOGO_BOB_TIMER_TARGET
+        bne .continue_bob
+        lda #0
+        sta logo_bob_timer
+
+	lda #MAX_LOGO_BOB_HEIGHT
+        cmp logo_bob_height
+        bne .not_max
+        jsr CalculateShineDirection
+        lda #-1
+        sta logo_bob_direction
+.not_max
+	lda #MIN_LOGO_BOB_HEIGHT
+        cmp logo_bob_height
+        bne .not_min
+        jsr CalculateShineDirection
+        lda #1
+        sta logo_bob_direction
+.not_min
+	lda logo_bob_direction
+        bmi .dec_height
+        inc logo_bob_height
+        jmp .continue_bob
+.dec_height
+	dec logo_bob_height
+.continue_bob
+      
+; Set playfield foreground and background
+        lda #BACKGROUND_COLOUR
+        sta COLUBK
+        lda shine ; #FOREGROUND_COLOUR ;SHINE_COLOUR 
+        sta COLUPF
+        
+        inc logo_bob_timer
+
+	rts
+        
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; 	    Logo Bitmap Data
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+        
+	org $FC00
+        
+LogoBitmap0
+	.byte 0
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000 ; 20
+	.byte %10000000
+	.byte %10000000
+	.byte %10000000
+	.byte %10000000
+	.byte %11000000
+	.byte %11000000
+	.byte %11000000
+	.byte %11000000
+	.byte %11000000
+	.byte %11100000
+	.byte %11100000
+	.byte %11100000
+	.byte %11100000
+	.byte %11100000
+	.byte %11100000
+	.byte %11100000
+	.byte %11100000
+	.byte %11100000
+	.byte %11100000
+	.byte %11000000
+	.byte %11000000
+	.byte %11000000
+	.byte %11000000
+	.byte %11000000
+	.byte %11000000
+	.byte %11000000
+	.byte %10000000
+	.byte %10000000
+	.byte %10000000
+	.byte %10000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+        
+LogoBitmap1
+	.byte 0
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000 ;8
+	.byte %00000001
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00011000
+	.byte %00011000
+	.byte %00111100
+	.byte %01111100
+	.byte %01111100
+	.byte %01111110
+	.byte %11111110
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111100
+	.byte %11111100
+	.byte %11111100
+	.byte %11111110
+	.byte %11111110
+	.byte %11111110
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %01111111
+	.byte %01111111
+	.byte %01111111
+	.byte %00111111
+	.byte %00111111
+	.byte %00111111
+	.byte %00011111
+	.byte %00011111
+	.byte %00011111
+	.byte %00001111
+	.byte %00001111
+	.byte %00000111
+	.byte %00000111
+	.byte %00000111
+	.byte %00000011
+	.byte %00000011
+	.byte %00000001
+	.byte %00000001
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+
+LogoBitmap2
+	.byte 0
+	.byte %00000000 ;5
+	.byte %11110000
+	.byte %11111100
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111110
+	.byte %11111100
+	.byte %11111100
+	.byte %11111000
+	.byte %11111000
+	.byte %11110000
+	.byte %11110000
+	.byte %11100000
+	.byte %11000000
+	.byte %11000000
+	.byte %10000000
+	.byte %10000001
+	.byte %00000001
+	.byte %00000001
+	.byte %00000011
+	.byte %00000011
+	.byte %00000011
+	.byte %00000111
+	.byte %00000111
+	.byte %00000111
+	.byte %00001111
+	.byte %00001111
+	.byte %00011111
+	.byte %00011111
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000001
+	.byte %00000001
+	.byte %00000001
+	.byte %00000011
+	.byte %00000011
+	.byte %00000111
+	.byte %00000111
+	.byte %00000111
+	.byte %00001111
+	.byte %00001111
+	.byte %00001111
+	.byte %00011111
+	.byte %00011111
+	.byte %00011111
+	.byte %00111111
+	.byte %00111111
+	.byte %00111111
+	.byte %01111111
+	.byte %01111111
+	.byte %01111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111110
+	.byte %11111110
+	.byte %11111100
+	.byte %11111100
+	.byte %11111000
+	.byte %11110000
+	.byte %11110000
+	.byte %11100000
+	.byte %11100000
+	.byte %11000000
+	.byte %11000000
+	.byte %10000000
+LogoBitmap3
+	.byte 0
+	.byte %11110000
+	.byte %11110000
+	.byte %11110000
+	.byte %11110000
+	.byte %11110000
+	.byte %11110000
+	.byte %11110000
+	.byte %11110000
+	.byte %11110000
+	.byte %11110000
+	.byte %11110000
+	.byte %11110000
+	.byte %11110000
+	.byte %11110000
+	.byte %11110000
+	.byte %11110000
+	.byte %11110000
+	.byte %11110000
+	.byte %11110000
+	.byte %11110000
+	.byte %11110000
+	.byte %11100000
+	.byte %11000000
+	.byte %11000000
+	.byte %10000000
+	.byte %10000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %10000000
+	.byte %10000000
+	.byte %10000000
+	.byte %10000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00010000
+	.byte %00010000
+	.byte %00010000
+	.byte %00110000
+	.byte %00110000
+	.byte %00110000
+	.byte %00110000
+	.byte %01110000
+	.byte %11110000
+	.byte %11110000
+	.byte %11110000
+	.byte %11110000
+	.byte %11110000
+	.byte %11110000
+	.byte %11110000
+	.byte %01110000
+	.byte %01110000
+	.byte %00110000
+	.byte %00110000
+	.byte %00010000
+
+LogoBitmap4
+	.byte 0
+	.byte %00000000 ;5
+	.byte %11000000
+	.byte %11100000
+	.byte %11111000
+	.byte %11111100
+	.byte %11111110
+	.byte %11111110
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %01111111
+	.byte %01111111
+	.byte %00111111
+	.byte %00011111
+	.byte %00011111
+	.byte %00001111
+	.byte %00001111
+	.byte %00000111
+	.byte %00000111
+	.byte %00000011
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %11111111
+	.byte %01111111
+	.byte %01111111
+	.byte %00111111
+	.byte %00111111
+	.byte %00011111
+	.byte %00011111
+	.byte %00001111
+	.byte %00001111
+	.byte %00000111
+	.byte %00000111
+	.byte %00000011
+	.byte %00000011
+	.byte %00000001
+	.byte %00000001
+	.byte %00000001
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %10000000
+	.byte %10000000
+	.byte %10000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+
+LogoBitmap5
+	.byte 0
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000 ;> 4
+	.byte %00000001
+	.byte %00000001
+	.byte %00000011
+	.byte %00000011
+	.byte %00000111
+	.byte %00000111
+	.byte %00001111
+	.byte %00001111
+	.byte %00001111
+	.byte %00011111
+	.byte %00011111
+	.byte %00011111
+	.byte %00011111
+	.byte %00011111
+	.byte %00111111
+	.byte %00111111
+	.byte %00111111
+	.byte %00111111
+	.byte %00111111
+	.byte %00111111
+	.byte %00111111
+	.byte %00111111
+	.byte %00111111
+	.byte %00111111
+	.byte %00111111
+	.byte %00111111
+	.byte %00111111
+	.byte %00111111
+	.byte %00111111
+	.byte %00111111
+	.byte %00011111
+	.byte %00011111
+	.byte %00011111
+	.byte %00011111
+	.byte %00011111
+	.byte %00011111
+	.byte %00011111
+	.byte %00001111
+	.byte %00001111
+	.byte %00001111
+	.byte %00001111
+	.byte %00000111
+	.byte %00000111
+	.byte %00000111
+	.byte %00000011
+	.byte %00000011
+	.byte %00000011
+	.byte %00000001
+	.byte %00000001
+	.byte %00000001
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+	.byte %00000000
+
         
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;		 Area Background and Dirt Colours
@@ -1376,41 +2225,25 @@ DirtColours
   
 ; Credit to 8Blit - Atari 2600 Game Programming  
 SoundType
-	.byte #$0C
-        .byte #$02
-        .byte #$06
-        .byte #$06
-        .byte #$08
-        .byte #3
-        .byte #12
-        .byte #12
-        .byte #12
+        .byte #$06 ;0
+        .byte #3   ;1 
+        .byte #12  ;2 
+        .byte #12  ;3 
+        .byte #12  ;4 
 SoundVolume
-	.byte #$02
-        .byte #$06
         .byte #$04
-        .byte #$04
-        .byte #$02
         .byte #$01
         .byte #2
         .byte #2
         .byte #2
 SoundPitch
-	.byte #$0D
         .byte #$03
-        .byte #$09
-        .byte #$03
-        .byte #19
         .byte #13
         .byte #26
         .byte #19
         .byte #15
 SoundLength
-	.byte #$01
-        .byte #$08
         .byte #$03
-        .byte #$03
-        .byte #4
         .byte #4
         .byte #4
         .byte #4
@@ -1706,6 +2539,7 @@ PFOfsTable
 	.byte NDR*5,NDR*5,NDR*5,NDR*5, NDR*5,NDR*5,NDR*5,NDR*5
 
 ;---End Color Data---
+
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

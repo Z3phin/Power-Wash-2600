@@ -93,10 +93,6 @@ Preferably, Joystick Controllers are the intended experience, although the game 
 
 The game contains some flashing colours and images which may affect some players.
 
-## Known Bugs or Issues:
-
-* There is a minor issue where collisions with dirt are not detected. To resolve the issue, simply move the Power Washer vertically by a small amount.
-
 
 
 
