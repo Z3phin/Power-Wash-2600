@@ -1,7 +1,6 @@
 # Power Wash 2600
 
-![alt text](https://github.com/Z3phin/Power-Wash-2600/blob/main/img/area-1.jpg)
-
+![alt text](https://github.com/Z3phin/Power-Wash-2600/blob/main/img/logo.png)
 
 ## About
 
@@ -54,6 +53,8 @@ To run the game, emulators may be used to run the game on your device, such as S
 Alternatively, [Stella](https://stella-emu.github.io) may be used, but requires a download and some setup.
 
 As a final alternative, the original source code can be copied into [8bitworkshopIDE](https://8bitworkshop.com/v3.11.0/). Here the original source code can be viewed (and altered) alongside an embedded version of the Javatari emulator. 
+
+![alt text](https://github.com/Z3phin/Power-Wash-2600/blob/main/img/area-1.jpg)
 
 ## How to Play:
 ### Controls:
